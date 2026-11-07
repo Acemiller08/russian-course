@@ -135,6 +135,10 @@ select { max-width: 100%; min-width: 0; font: inherit; padding: 4px 8px; border:
 .danger-box { border-left-color: var(--bad); } .startover { margin-top: 28px; padding-top: 4px; border-top: 1px solid var(--line); }
 .nd { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--line); background: var(--card); border-radius: 4px; margin: 8px 0; } .nd > div { flex: 1; min-width: 0; } .nd .btn { flex: none; }
 .gtab { border: 1px solid var(--line); background: var(--card); border-radius: 4px; padding: 14px 16px; margin: 10px 0; } .gtab ul { padding-left: 1.2em; margin: 6px 0 10px; } ol.steps { padding-left: 1.3em; } ol.steps li { margin: 6px 0; }
+.ladder { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; } .ladder span { font-size: .72rem; padding: 2px 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+.ladder span.done { background: var(--goodbg); color: var(--text); border-color: transparent; } .ladder span.now { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+details.report summary { cursor: pointer; list-style: none; } details.report summary::-webkit-details-marker { display: none; } details.report summary::before { content: '▸ '; color: var(--margin); } details.report[open] summary::before { content: '▾ '; }
+details.report ul { padding-left: 1.1em; } details.report li { margin: 6px 0; }
 .big { font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
 .chip.ru { font-family: var(--display); font-size: 1.05rem; } .chip:disabled { opacity: .35; }
 .facts { display: grid; gap: 6px; margin-top: 6px; } .fact { display: flex; gap: 8px; align-items: flex-start; padding: 6px 10px; background: var(--paper); border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
@@ -168,12 +172,33 @@ select { max-width: 100%; min-width: 0; font: inherit; padding: 4px 8px; border:
   var deferred = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; var b = document.getElementById('installBtn'); if (b) b.hidden = false; });
   window.appInstall = function () { if (deferred) { deferred.prompt(); deferred = null; } };
+  window.APP_VERSION = '6d8694f6';
+  // Hard refresh: drop the offline copy and load the newest version. Progress (saved separately on the device) is not touched.
+  window.appHardRefresh = async function () {
+    var b = document.getElementById('updBtn'); if (b) { b.disabled = true; b.textContent = 'Updating…'; }
+    try { if ('serviceWorker' in navigator) { var rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(function (r) { return r.unregister(); })); } } catch (e) {}
+    try { if (window.caches) { var ks = await caches.keys(); await Promise.all(ks.map(function (k) { return caches.delete(k); })); } } catch (e) {}
+    location.replace(location.pathname + '?v=' + Date.now());
+  };
+  window.appCheckUpdate = async function (quiet) {
+    if (!/^https?:/.test(location.protocol)) { if (!quiet) alertBar('Updates work on the hosted app link.'); return; }
+    try {
+      var r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); var v = (await r.json()).v;
+      if (v && v !== window.APP_VERSION) showUpdateBar(); else if (!quiet) alertBar('You have the newest version.');
+    } catch (e) { if (!quiet) alertBar('Couldn’t check: no connection.'); }
+  };
+  function bar(html) { var d = document.getElementById('updbar') || document.createElement('div'); d.id = 'updbar'; d.innerHTML = html; if (!d.parentNode) document.body.appendChild(d); return d; }
+  function alertBar(t) { var d = bar('<span>' + t + '</span><button onclick="this.parentNode.remove()" aria-label="Close">✕</button>'); setTimeout(function () { d.remove(); }, 4000); }
+  function showUpdateBar() { bar('<span><b>A new version is ready.</b> Your progress stays.</span><button id="updBtn" onclick="appHardRefresh()">Update now</button>'); }
+  window.addEventListener('load', function () { setTimeout(function () { appCheckUpdate(true); }, 1500); });
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') appCheckUpdate(true); });
 })();
-</script></head><body><header class="top"><div class="topin">
+</script><style>#updbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;display:flex;gap:10px;align-items:center;justify-content:space-between;background:#1c2f6b;color:#fff;padding:12px 14px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);font:14px/1.35 system-ui,sans-serif}#updbar button{flex:none;border:0;border-radius:6px;padding:8px 12px;font:600 14px system-ui,sans-serif;background:#fff;color:#1c2f6b;cursor:pointer}</style></head><body><header class="top"><div class="topin">
   <div class="brand" id="brand" role="button" tabindex="0">Курс русского · Уроки 1–41</div>
   <nav id="nav">
     <button class="navb" data-view="guide">Start here</button>
     <button class="navb" data-view="home">Diagnostic</button>
+    <button class="navb" data-view="coach">Coach</button>
     <button class="navb" data-view="practice">Practice</button>
     <button class="navb" data-view="grind">Grind</button>
     <button class="navb" data-view="study">Words</button>
@@ -930,31 +955,78 @@ function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = fal
 
 /* ============================== SPEECH ============================== */
 const TTS = {
-  ok: 'speechSynthesis' in window, voices: [], rate: LS.get('rate', 0.9),
-  load() { if (!this.ok) return; this.voices = speechSynthesis.getVoices().filter(v => /^ru/i.test(v.lang)); },
-  stop() { if (this.ok) speechSynthesis.cancel(); },
-  // lines: [[speaker, text], ...]; calls onDone when finished
-  play(lines, onDone, rateMul = 1) {
+  ok: 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window,
+  ios: /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
+  voices: [], rate: LS.get('rate', 0.9), unlocked: false, keep: null, timer: null, seq: 0, lastFail: false,
+  load() {
+    if (!this.ok) return;
+    let ru = speechSynthesis.getVoices().filter(v => /^ru/i.test(v.lang));
+    // iOS lists "Enhanced"/"Premium" voices that may not be downloaded; those play silence, so prefer the plain installed ones
+    const plain = ru.filter(v => !/enhanced|premium|siri|neural/i.test(v.name));
+    if (this.ios && plain.length) ru = plain;
+    ru.sort((x, y) => (y.localService - x.localService) || (y.default - x.default));
+    this.voices = ru;
+  },
+  // iOS only lets a page speak after speech has been started from a tap; the first tap anywhere unlocks it
+  unlock() {
+    if (!TTS.ok || TTS.unlocked) return;
+    try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'ru-RU'; speechSynthesis.speak(u); TTS.unlocked = true; } catch (e) {}
+  },
+  stop() { if (!this.ok) return; this.seq++; clearTimeout(this.timer); this.keep = null; if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel(); },
+  // lines: [[speaker, text], ...]; onDone(ok) when finished; onStart() the moment sound actually begins
+  play(lines, onDone, rateMul = 1, onStart) {
     if (!this.ok) { onDone && onDone(false); return; }
-    speechSynthesis.cancel();
-    let i = 0;
+    if (!this.voices.length) this.load();
+    const seq = ++this.seq; clearTimeout(this.timer);
+    const wasBusy = speechSynthesis.speaking || speechSynthesis.pending;
+    if (wasBusy) speechSynthesis.cancel();                 // cancel only when something is playing…
+    if (speechSynthesis.paused) speechSynthesis.resume();
+    const chunks = [];                                      // one sentence at a time: iOS stalls on long utterances
+    for (const [who, text] of lines) for (const piece of String(text).match(/[^.!?…]+[.!?…]*[»"”]?\s*/g) || [String(text)]) if (piece.trim()) chunks.push([who, piece.trim()]);
+    let i = 0, started = false, useVoice = true, tries = 0;
+    const finish = ok => { if (seq !== this.seq) return; clearTimeout(this.timer); this.keep = null; this.lastFail = !ok; onDone && onDone(ok); };
+    const begin = () => { if (!started) { started = true; onStart && onStart(); } };
     const next = () => {
-      if (i >= lines.length) { onDone && onDone(true); return; }
-      const [who, text] = lines[i++];
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ru-RU'; u.rate = this.rate * rateMul;
-      const v = this.voices;
+      if (seq !== this.seq) return;
+      if (i >= chunks.length) return finish(started);
+      const [who, text] = chunks[i];
+      const u = new SpeechSynthesisUtterance(text); this.keep = u;   // keep a reference so the end event isn't lost
+      u.lang = 'ru-RU'; u.rate = Math.max(0.5, Math.min(1.5, this.rate * rateMul));
+      const v = useVoice ? this.voices : [];
       if (v.length) u.voice = who === 'B' && v.length > 1 ? v[1] : v[0];
-      if (who === 'B' && v.length < 2) u.pitch = 1.35;
-      if (who === 'A' && v.length < 2) u.pitch = 0.9;
-      u.onend = () => setTimeout(next, 350);
-      u.onerror = () => setTimeout(next, 50);
+      if (v.length < 2) u.pitch = who === 'B' ? 1.35 : who === 'A' ? 0.9 : 1;
+      let settled = false;
+      const advance = () => { if (settled || seq !== this.seq) return; settled = true; clearTimeout(this.timer); i++; setTimeout(next, 300); };
+      const retry = () => { // nothing came out: try once more with the phone's default Russian voice, then give up
+        if (settled || seq !== this.seq) return; settled = true; clearTimeout(this.timer);
+        if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+        if (++tries <= 1) { useVoice = false; setTimeout(next, 150); } else finish(false);
+      };
+      u.onstart = () => begin();
+      u.onend = () => { begin(); advance(); };
+      u.onerror = e => { if (e && /interrupted|canceled/.test(e.error || '') && seq !== this.seq) return; started ? advance() : retry(); };
+      // watchdog: if the start or the end is never reported (an iOS habit), don't hang
+      const est = 1200 + text.length * 85 / u.rate, t0 = Date.now(); let quiet = 0, heard = false;
+      const watch = () => {
+        if (settled || seq !== this.seq) return;
+        const on = speechSynthesis.speaking || speechSynthesis.pending;
+        if (on) { heard = true; begin(); quiet = 0; } else if (heard || started) quiet++;
+        if ((heard || started) && quiet >= 2) return advance();                       // it stopped talking but never said so
+        if (!started && !heard && Date.now() - t0 > 3000) return retry();             // nothing ever came out
+        if (Date.now() - t0 > est * 2 + 4000) return started || heard ? advance() : retry();
+        this.timer = setTimeout(watch, 250);
+      };
+      this.timer = setTimeout(watch, 250);
       speechSynthesis.speak(u);
     };
-    next();
+    if (wasBusy) setTimeout(next, 150); else next();          // …and give the engine a moment after cancelling
   },
 };
-if (TTS.ok) { TTS.load(); speechSynthesis.onvoiceschanged = () => { TTS.load(); if (state.view === 'home') render(); }; }
+const NO_SOUND = () => `<span class="small">No sound? ${TTS.ios ? 'Turn off Silent mode, turn the volume up, and check Settings → Accessibility → Spoken Content → Voices → Russian.' : 'Turn the volume up and make sure a Russian voice is installed (see Start here).'} Then tap Play again. This play wasn’t counted.</span>`;
+if (TTS.ok) {
+  TTS.load(); speechSynthesis.onvoiceschanged = () => { TTS.load(); if (state.view === 'home') render(); };
+  ['pointerdown', 'touchend', 'keydown'].forEach(ev => document.addEventListener(ev, TTS.unlock, { capture: true, passive: true }));
+}
 
 /* ============================== STORAGE (db + local) ============================== */
 let db = null;
@@ -1069,16 +1141,507 @@ const SECTIONS = {
     } },
   grind: { n: 0, hidden: true, title: 'Grind', ru: 'Зубрёжка', est: '', desc: '', build: opt => buildGrind(opt) },
   practice: { n: 0, hidden: true, title: 'Practice', ru: 'Практика', est: '15 min', desc: '', build: opt => buildPractice(opt) },
+  coach: { n: 0, hidden: true, title: 'Coach', ru: 'Тренер', est: '', desc: '', build: opt => buildCoach(opt) },
   names: { n: 0, hidden: true, title: 'Names & Numbers', ru: 'Имена и числа', est: '', desc: '', build: opt => buildNames(opt) },
 };
 const WORD = Object.fromEntries(BANK.map(w => [w.id, w]));
 const acceptFor = w => [w.ru, ...w.alt, ...BANK.filter(x => x.l === w.l && x.en === w.en && x.id !== w.id).map(x => x.ru)];
 
 
+/* ============================== COACH ==============================
+   Diagnoses each wrong answer by KIND of mistake (spelling rule, case, preposition, aspect…), keeps a
+   decaying tally per person, explains the top problems and builds drills aimed at them. Rules only, no AI. */
+const MOTION_SETS = [ // [stem regex, direction, mode]
+  [/^(ид[уеёт]|иду|ид[её]шь|шёл|шел|шла|шли|шло|идти)/, 'uni', 'foot'], [/^(хож|ход[иия])/, 'multi', 'foot'],
+  [/^(ед[уеё]|еха|ехать|едь)/, 'uni', 'vehicle'], [/^(езж|езд[иия])/, 'multi', 'vehicle'],
+  [/^(нес|нёс|несл)/, 'uni', 'carry'], [/^(нош|нос[иия])/, 'multi', 'carry'], [/^(вед|вёл|вел[аио]?$|вести)/, 'uni', 'lead'], [/^(вож|вод[иия])/, 'multi', 'lead'],
+  [/^(вез|вёз|везл)/, 'uni', 'transport'], [/^(вож|воз[иия])/, 'multi', 'transport'], [/^(бег[уа]|беж)/, 'uni', 'run'], [/^(бега)/, 'multi', 'run'],
+  [/^(лет|леч)/, 'uni', 'fly'], [/^(лета)/, 'multi', 'fly'], [/^(плыв|плыл|плыть)/, 'uni', 'swim'], [/^(плава)/, 'multi', 'swim'],
+];
+const motionOf = w => { w = w.toLowerCase().replace(/^(по)/, ''); for (const [re, d, m] of MOTION_SETS) if (re.test(w)) return { d, m }; return null; };
+const PREPS = new Set(['в', 'во', 'на', 'о', 'об', 'обо', 'с', 'со', 'из', 'к', 'ко', 'у', 'от', 'до', 'по', 'за', 'под', 'над', 'без', 'для', 'при', 'про', 'через']);
+const ADJ_END = /(ого|его|ому|ему|ым|им|ом|ем|ой|ей|ую|юю|ая|яя|ое|ее|ые|ие|ых|их|ыми|ими|ый|ий)$/;
+const VERB_PRES = /(ешь|ишь|ет|ит|ем|им|ете|ите|ут|ют|ат|ят)$/, VERB_PAST = /(л|ла|ло|ли)$/;
+const C1 = /(ешь|ет|ем|ете|ут|ют)$/, C2 = /(ишь|ит|им|ите|ат|ят)$/;
+const PREFIXES = ['пере', 'при', 'про', 'под', 'раз', 'рас', 'вы', 'по', 'за', 'на', 'от', 'об', 'до', 'из', 'ис', 'с', 'у', 'в', 'о'];
+function violations(w) { // fix the spelling-rule violations in a word; returns {s7, s5, fixed}
+  let s7 = false, s5 = false;
+  let f = w.replace(/([гкхжшчщ])ы/g, (m, a) => { s7 = true; return a + 'и'; }).replace(/([гкхжшчщц])ю/g, (m, a) => { s7 = true; return a + 'у'; }).replace(/([гкхжшчщц])я/g, (m, a) => { s7 = true; return a + 'а'; });
+  return { s7, fixed: f };
+}
+function stemSplit(a, b) { let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++; return i; }
+function sameRoot(a, b) { const strip = w => { for (const p of PREFIXES) if (w.startsWith(p) && w.length - p.length >= 3) return w.slice(p.length); return w; }; return a !== b && (strip(a) === b || strip(b) === a || (strip(a) === strip(b) && strip(a) !== a)); }
+// returns a mistake code, or null when the answer is right
+function diagnose(typedRaw, modelRaw, ctx = {}) {
+  const t = norm(typedRaw || ''), m = norm(modelRaw || ''), topic = (ctx.topic || '') + ' ' + (ctx.gtype || '');
+  if (t === m) return null;
+  if (/no word|^—/.test(modelRaw || '') || (/\bесть\b/.test(t) && !/\bесть\b/.test(m)) || /^есть/i.test(topic)) return 'est';
+  if (/никто|ничего|никого|нигде|никогда|neg/i.test(topic) || /^ни(кто|кого|кому|кем|ком|чего|чем|где|куда|когда)$/.test(m)) return 'neg';
+  if (!t || t === '?') return /motion|ходить|ехать|летать|плавать|нести|вести|везти/i.test(topic) ? 'motion' : /aspect/i.test(topic) ? 'aspect' : 'vocab';
+  const tw = t.split(' '), mw = m.split(' ');
+  if (tw.length === mw.length && tw.length > 2 && [...tw].sort().join(' ') === [...mw].sort().join(' ')) return 'order';
+  if (/order|compose/.test(ctx.gtype || '') && tw.length > 2) return 'order';
+  // prepositions
+  const tp = PREPS.has(tw[0]) ? tw[0] : null, mp = PREPS.has(mw[0]) ? mw[0] : null;
+  if (mp && !tp && /^(в|во|на)$/.test(mp)) return 'prep_missing';
+  if (mp && tp && tp !== mp) {
+    const g = x => x.replace(/^во$/, 'в').replace(/^(об|обо)$/, 'о').replace(/^со$/, 'с').replace(/^ко$/, 'к');
+    if (g(tp) === g(mp)) return 'ob';
+    if (new Set([g(tp), g(mp)]).size === 2 && ['в', 'на'].includes(g(tp)) && ['в', 'на'].includes(g(mp))) return 'prep_vna';
+    if (new Set([g(tp), g(mp)]).size === 2 && ['из', 'с'].includes(g(tp)) && ['из', 'с'].includes(g(mp))) return 'prep_vna';
+    return 'case_end';
+  }
+  // word-by-word
+  const pairs = tw.length === mw.length ? tw.map((x, i) => [x, mw[i]]).filter(([a, b]) => a !== b) : [[tw[tw.length - 1], mw[mw.length - 1]]];
+  const codes = [];
+  for (const [a, b] of pairs) codes.push(wordDiag(a, b, ctx, mw.length > 1, mp, tw.length === mw.length ? tw : null));
+  const pri = ['spell7', 'spell5', 'softsign', 'fleeting', 'motion', 'aspect', 'past', 'tense', 'conj', 'stem', 'acc_anim', 'locdir', 'adj_agree', 'plural_hs', 'numform', 'names', 'case_end', 'spelling', 'vocab'];
+  codes.sort((x, y) => pri.indexOf(x) - pri.indexOf(y));
+  let c = codes[0] || 'spelling';
+  if (ctx.vocab && !['spell7', 'spell5', 'softsign', 'motion', 'spelling', 'vocab'].includes(c)) c = lev(t, m) <= Math.max(2, Math.floor(m.length / 3)) ? 'spelling' : 'vocab';
+  if (c === 'adj_agree' && /Pronoun/i.test(topic)) c = 'case_end';
+  if ((c === 'spelling' || c === 'vocab' || c === 'case_end') && /patronym|names|Surname|n:patr|n:sur|n:ncase|n:nick/i.test(topic)) c = 'names';
+  if ((c === 'spelling' || c === 'case_end' || c === 'vocab') && /number|age|год|n:agree|n:ncases|n:full|n:date|n:year|ords|Genitive after 2|градус/i.test(topic)) c = 'numform';
+  if ((c === 'spelling' || c === 'vocab') && /motion|ходить|ехать|летать|плавать/i.test(topic)) c = 'motion';
+  if ((c === 'spelling' || c === 'vocab') && /aspect/i.test(topic)) c = 'aspect';
+  return c;
+}
+function wordDiag(a, b, ctx, multi, mp, tw) {
+  const topic = (ctx.topic || '') + ' ' + (ctx.gtype || '');
+  const v = violations(a); if (v.s7 && (v.fixed === b || lev(v.fixed, b) < lev(a, b))) return 'spell7';
+  if (/[жшчщц]о/.test(a) && a.replace(/([жшчщц])о/g, '$1е') === b) return 'spell5';
+  if (a.replace(/ь/g, '') === b.replace(/ь/g, '') && a !== b) return 'softsign';
+  if (a.length === b.length + 1) { for (let i = 0; i < a.length - 1; i++) if (/[оеё]/.test(a[i]) && !/[аеёиоуыэюяь]/.test(a[i + 1]) && a.slice(0, i) + a.slice(i + 1) === b && i >= a.length - 4) return 'fleeting'; }
+  if (b.length === a.length + 1) { for (let i = 0; i < b.length - 1; i++) if (/[оеё]/.test(b[i]) && !/[аеёиоуыэюяь]/.test(b[i + 1]) && b.slice(0, i) + b.slice(i + 1) === a && i >= b.length - 4) return 'fleeting'; }
+  const ma = motionOf(a), mb = motionOf(b); if (ma && mb && (ma.d !== mb.d || ma.m !== mb.m)) return 'motion';
+  if (sameRoot(a, b)) return 'aspect';
+  const k = stemSplit(a, b);
+  const bothPast = VERB_PAST.test(a) && VERB_PAST.test(b), oneP = VERB_PAST.test(a) !== VERB_PAST.test(b);
+  if (bothPast && k >= Math.min(a.length, b.length) - 2 && k >= 2) return 'past';
+  if (oneP && k >= 3 && (VERB_PRES.test(a) || VERB_PRES.test(b))) return 'tense';
+  if (VERB_PRES.test(a) && VERB_PRES.test(b) && ((C1.test(a) && C2.test(b)) || (C2.test(a) && C1.test(b))) && k >= 2) return 'conj';
+  // consonant change in the stem (хотешь → хочешь, мотим → можем, писат → пишите)
+  if (VERB_PRES.test(b) && a.length >= 4 && k >= 1 && k < Math.min(a.length, b.length) - 2 && lev(a, b) <= 3) return 'stem';
+  if (k >= Math.max(2, Math.min(a.length, b.length) - 4)) {
+    if (/person as object|Accusative · person/i.test(topic) || (b === a + 'а' || b === a + 'я')) return 'acc_anim';
+    if (/location|direction|где|куда/i.test(topic) && mp) return 'locdir';
+    if (/Plural/i.test(topic) || (/[ыи]$/.test(a) && /[ыи]$/.test(b) && a.slice(0, -1) === b.slice(0, -1))) return 'plural_hs';
+    if (multi && ADJ_END.test(b) && tw) return 'adj_agree';
+    if (/Adjective|agreement|каждый/i.test(topic)) return 'adj_agree';
+    if (VERB_PRES.test(b) && VERB_PRES.test(a)) return 'conj';
+    return 'case_end';
+  }
+  if (lev(a, b) <= Math.max(1, Math.floor(b.length / 4))) return 'spelling';
+  return 'vocab';
+}
+const CODES = {
+  spell7: { name: 'Spelling rule: no ы, ю, я after г к х ж ш ч щ', ex: 'книги · хорошие · учат · шапку · кричат',
+    why: 'After <b>г, к, х, ж, ш, ч, щ</b> Russian never writes <b>ы</b>: it writes <b>и</b> (книги, хорошие, ножи). After those letters and <b>ц</b> it never writes <b>ю</b> or <b>я</b>: it writes <b>у</b> and <b>а</b> (шапку, учат, кричат, лежат). This beats the normal ending every time.' },
+  spell5: { name: 'Spelling rule: unstressed о after ж ш ч щ ц becomes е', ex: 'с Сашей · хорошее · с мужем · улицей',
+    why: 'After <b>ж, ш, ч, щ, ц</b>, an unstressed <b>о</b> in an ending is written <b>е</b>: с Сашей, с Наташей, хорошее, свежее, с мужем, улицей. When the ending is stressed it stays о: с врачом, ножом, отцом.' },
+  softsign: { name: 'The soft sign ь', ex: 'писать · день · учитель · семья',
+    why: 'Infinitives end in <b>-ть</b> (писать, читать). Many nouns end in a soft consonant spelled with <b>ь</b> (день, учитель, тетрадь), and it stays in the other forms (учителя, тетради). Before я, е, ё, ю inside a word it separates the sounds: семья, статья, Наталья.' },
+  prep_vna: { name: 'в or на (из or с)', ex: 'в гостинице · на почте · на работе · на Кавказе',
+    why: 'Most places take <b>в</b> (в гостинице, в школе, в Москве). A fixed group takes <b>на</b>: open areas, events, and some places you just have to learn: на почте, на работе, на заводе, на вокзале, на улице, на концерте, на Кавказе, на Аляске. For "from", в pairs with <b>из</b> and на pairs with <b>с</b>: из школы, с работы.' },
+  prep_missing: { name: 'Where / where to need a preposition', ex: 'на работе · в школу',
+    why: 'To say where something is or where you are going you almost always need <b>в</b> or <b>на</b>: Он <b>на</b> работе. Я иду <b>в</b> школу. Only дома / домой and adverbs (здесь, туда) work without one.' },
+  locdir: { name: 'Где? (location) vs Куда? (direction)', ex: 'в институте (где?) · в институт (куда?)',
+    why: 'Location (<b>где?</b>, with быть, жить, работать) uses в/на + <b>Prepositional</b>: в институте, на почте. Direction (<b>куда?</b>, with идти, ехать, ходить) uses в/на + <b>Accusative</b>: в институт, на почту. Same preposition, different case.' },
+  ob: { name: 'о or об', ex: 'об институте · об Игоре · о дедушке',
+    why: 'Use <b>об</b> before a word that starts with the vowel sounds а, о, у, э, и: об институте, об Анне, об уроке. Use <b>о</b> everywhere else, including before е, ё, ю, я: о Европе, о ёлке. (обо мне is a fixed form.)' },
+  acc_anim: { name: 'Accusative of people and animals', ex: 'сына · студента · брата · сестру',
+    why: 'When a <b>masculine person or animal</b> is the object, the Accusative looks like the Genitive: Я вижу сына, студента, брата, учителя. Feminine -а/-я nouns take <b>-у/-ю</b>: сестру, Таню. Things (inanimate masculine) don’t change: Я вижу стол.' },
+  adj_agree: { name: 'Adjective endings must match the noun', ex: 'нового студента · каждое утро · хорошие студенты',
+    why: 'An adjective (and мой, ваш, этот, каждый) takes the same gender, number and case as its noun: <b>новый</b> студент → вижу <b>нового</b> студента; <b>каждое</b> утро (утро is neuter); <b>хорошие</b> студенты. Change the adjective every time the noun changes.' },
+  case_end: { name: 'Case endings', ex: 'о дедушке · в торговом центре · никого',
+    why: 'You picked the right word but the wrong ending. Find what decides the case: the preposition (в/на + где? → Prepositional, о → Prepositional, у/из/без → Genitive, к → Dative, с “with” → Instrumental), the verb (вижу + Accusative, звоню + Dative, интересуюсь + Instrumental) or a number (2–4 → Genitive singular, 5+ → Genitive plural).' },
+  plural_hs: { name: 'Plural: ы or и', ex: 'капитаны · преподаватели · горы · статьи',
+    why: 'Hard stems take <b>-ы</b> (капитаны, горы, столы). Soft stems (ending in ь, й, or written with я) take <b>-и</b> (преподаватели, музеи, недели, статьи). After г, к, х, ж, ш, ч, щ it’s always <b>-и</b> (книги, врачи). Neuter nouns take -а/-я (окна, моря).' },
+  fleeting: { name: 'Fleeting vowels', ex: 'ребёнок → ребёнка · отец → отца · день → дня',
+    why: 'Some nouns lose the <b>о / е / ё</b> of their last syllable as soon as an ending is added: ребёнок → о ребёнке, отец → отца, день → дня, рынок → на рынке, американец → американца, Павел → Павла. Learn these with their Genitive.' },
+  conj: { name: 'Present tense: 1st or 2nd conjugation', ex: 'говорят · учат · живём',
+    why: '1st-conjugation verbs use <b>-ешь, -ет, -ем, -ете, -ут/-ют</b> (читаешь, читают). 2nd-conjugation verbs use <b>-ишь, -ит, -им, -ите, -ат/-ят</b> (говоришь, говорят). Most -ить verbs are 2nd; most -ать verbs are 1st. Learn the они form with the infinitive: говорить → говорят.' },
+  stem: { name: 'Stem changes in verbs', ex: 'хочешь · можем · пишу · живём',
+    why: 'Some verbs change their stem in the present: хотеть → хочу, хочешь, хотим; мочь → могу, можешь, могут; писать → пишу, пишешь; жить → живу, живём; ездить → езжу. These have to be memorized; the endings are still regular.' },
+  past: { name: 'Past tense agrees with the subject', ex: 'был · была · было · были',
+    why: 'The past tense ends in <b>-л</b> (he), <b>-ла</b> (she), <b>-ло</b> (it), <b>-ли</b> (they, вы, plural). It agrees with the subject: Она покупала, Мы были, Было холодно. Вы always takes -ли, even for one person.' },
+  tense: { name: 'Wrong tense', ex: 'читала (past) · читает (present)',
+    why: 'Check the time words in the sentence: вчера, в прошлом году, раньше → past (-л, -ла, -ли); сейчас, обычно, каждый день → present; завтра, скоро → future.' },
+  aspect: { name: 'Aspect: imperfective or perfective', ex: 'читал / прочитал · делать / сделать',
+    why: 'Imperfective (делать, читать) is for process, repeated actions and “did it happen at all?”. Perfective (сделать, прочитать) is for one completed result. Clues: каждый день, часто, долго → imperfective; уже, наконец, a result → perfective. After начать, кончить, нельзя (not allowed) use imperfective.' },
+  motion: { name: 'Verbs of motion', ex: 'идёт / ходит · едет / ездит',
+    why: 'Choose two things. <b>How:</b> on foot (идти/ходить) or by vehicle (ехать/ездить). <b>One way or not:</b> one trip in one direction now → идти / ехать; round trips, habits and “been somewhere” → ходить / ездить. Каждый день я хожу в школу. Сейчас я иду в школу. Вчера мы ездили в Москву (and came back).' },
+  est: { name: 'есть: when to use it', ex: 'У меня есть брат. · У меня синие глаза.',
+    why: 'Use <b>есть</b> when you are stating that something exists or that you have it: У меня есть машина. Leave it out when the thing’s existence is understood and you describe it: У него большая семья. У меня болит голова. In “not having”, use нет + Genitive: У меня нет машины.' },
+  neg: { name: 'Negative pronouns', ex: 'никого · ничего · никому · нигде',
+    why: 'никто, ничто decline like кто, что: Я никого не видел (Accusative), Он никому не звонил (Dative), Она ничего не знает. Always keep <b>не</b> before the verb: Я никогда не был в Москве.' },
+  numform: { name: 'Numbers and the noun after them', ex: '21 год · 3 года · 5 лет · около шестидесяти лет',
+    why: 'After 1 (21, 31…): Nominative singular — год, рубль. After 2, 3, 4 (22, 33…): Genitive singular — года, рубля. After 5–20 and round numbers: Genitive plural — лет, рублей. 11–14 always take the Genitive plural. In other cases the number itself declines: около шестидесяти лет, с пятью друзьями.' },
+  names: { name: 'Names, patronymics and surnames', ex: 'Ивановна · Сергеевич · Иванова',
+    why: 'Patronymics come from the father’s name: -ович / -овна after a hard consonant (Иванович, Ивановна), -евич / -евна after й or ь (Сергеевич, Игоревна). Women’s surnames add -а (Иванова), the family is plural (Ивановы). Names decline like nouns: у Ивана, с Наташей.' },
+  order: { name: 'Building the sentence', ex: 'Они живут на берегу реки.',
+    why: 'Russian order is flexible but has habits: subject, verb, then the rest; a “whose / of what” word follows its noun (берег реки); a question word comes first (Куда ты идёшь?). Build the core (who does what) first, then add where, when and how.' },
+  spelling: { name: 'Spelling slips', ex: '',
+    why: 'You knew the word but one or two letters were off. Say the word aloud slowly and write it while hearing it. These usually disappear with a few typed repetitions.' },
+  vocab: { name: 'Words you didn’t know', ex: '',
+    why: 'You didn’t know the word, or wrote a different one. The fastest fix is short, frequent review: the words below go into your drill, and Words → Learn on their lesson helps too.' },
+};
+const coachState = () => {
+  if (!state.coach) state.coach = LS.get('coach', null) || { codes: {}, log: [], seeded: false };
+  const C = state.coach; C.codes = C.codes || {}; C.log = C.log || []; C.times = C.times || { mc: [], type: [] };
+  return C;
+};
+const COACH_HALF = 14 * 864e5, DAYMS = 864e5, RECHECK = [0, 7, 14, 30, 60];
+const LADDER = ['Pick it', 'Type it', 'Use it in a sentence', 'Hear it, write it'];
+function coachDecay(x, now = Date.now()) { return x ? x.v * Math.pow(0.5, (now - x.t) / COACH_HALF) : 0; }
+function coachEntry(code) { const C = coachState(), e = C.codes[code] = C.codes[code] || {}; const d = { miss: { v: 0, t: Date.now() }, hit: { v: 0, t: Date.now() }, lvl: 0, streak: 0, status: 'active', box: 0, due: 0, seen: 0 }; for (const k in d) if (e[k] == null) e[k] = d[k]; return e; }
+function coachBump(code, kind, w = 1) { if (!(w > 0.01)) return; const e = coachEntry(code), now = Date.now(); e[kind] = { v: coachDecay(e[kind], now) + w, t: now }; }
+function recModel(rec, item) {
+  if (rec.t === 'vocab' && WORD[rec.id]) return WORD[rec.id].ru;
+  const a = rec.ans ?? item?.ans; return Array.isArray(a) ? a[0] : a;
+}
+/* ---------- speed: "slow" is judged against each person's own typical times ---------- */
+const median = a => { if (!a.length) return 0; const s = a.slice().sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+function slowLimit(kind) {
+  const t = coachState().times[kind] || [], def = kind === 'mc' ? 12000 : 15000;
+  if (t.length < 10) return def;
+  return Math.max(kind === 'mc' ? 6000 : 9000, Math.min(25000, median(t) * 2.2));
+}
+function answerKind(rec, item) { return (item?.kind === 'mc' || rec.t === 'vocab' && rec.lvl === 1 || typeof rec.typed !== 'string') ? 'mc' : 'type'; }
+function isSlow(rec, item) { if (!(rec.ms > 0) || /pass|speak|script|recall|retell/.test(rec.t || item?.kind || '')) return false; return rec.ms > slowLimit(answerKind(rec, item)); }
+function noteTime(rec, item, sc) { if (!(rec.ms > 0) || sc < .75 || /pass|speak|script|recall|retell/.test(rec.t || item?.kind || '')) return; const t = coachState().times[answerKind(rec, item)]; t.push(Math.min(rec.ms, 60000)); if (t.length > 80) t.shift(); }
+/* ---------- watching every answer ---------- */
+function coachObserve(rec, item, quiet, at) {
+  const W = at ? Math.pow(0.5, (Date.now() - at) / COACH_HALF) : 1;
+  try {
+    if (!quiet && !coachState().seeded) coachSeed();
+    const typed = rec.typed, model = recModel(rec, item);
+    const sc = rec.score ?? (rec.t === 'vocab' ? (rec.lvl >= 3 ? 1 : 0) : rec.ok ? 1 : rec.ok === false ? 0 : null);
+    if (sc == null || model == null) return;
+    const slow = isSlow(rec, item); noteTime(rec, item, sc);
+    if (slow && sc >= .75) rec.slow = true;
+    const ctx = { topic: rec.topic || item?.topic || '', gtype: rec.gtype || item?.gtype || '' }; ctx.vocab = rec.t === 'vocab' || /^(spell|n:pspell|n:phear|n:nhearn|c:vocab|c:spelling)$/.test(ctx.gtype);
+    // inside a Coach drill: move along the ladder, toward mastery
+    if (item?.ccode) {
+      const e = coachEntry(item.ccode); e.seen++;
+      if (sc >= .75) {
+        coachBump(item.ccode, 'hit', slow ? 0.5 * W : W);
+        if (item.recheck) { if (!slow) { e.box = Math.min(RECHECK.length - 1, e.box + 1); e.due = Date.now() + RECHECK[e.box] * DAYMS; } }
+        else if (!slow) { e.streak++; if (e.streak >= 3) { e.streak = 0; if (e.lvl < LADDER.length - 1) e.lvl++; else { e.status = 'mastered'; e.box = 1; e.due = Date.now() + RECHECK[1] * DAYMS; } } }
+        if (!quiet) coachSave(); return;
+      }
+      e.streak = 0; e.lvl = Math.max(0, e.lvl - 1);
+      if (item.recheck || e.status === 'mastered') { e.status = 'active'; e.lvl = Math.max(1, e.lvl); e.box = 0; }
+    }
+    if (sc >= .75) return;
+    if (typeof typed !== 'string' || /^[a-z ,.'!?-]+$/i.test(model)) { if (item?.ccode) coachBump(item.ccode, 'miss', W); if (!quiet) coachSave(); return; }  // English answers / no text: count only inside Coach drills
+    const code = diagnose(typed, model, ctx) || (item?.ccode || null); if (!code) return;
+    coachBump(code, 'miss', W);
+    const e = coachEntry(code); if (e.status === 'mastered' && !quiet) { e.status = 'active'; e.lvl = Math.max(0, e.lvl - 1); e.box = 0; }   // a mastered problem that comes back is active again
+    const C = coachState(); C.log.unshift({ c: code, typed: String(typed).slice(0, 60), ans: String(model).slice(0, 60), id: rec.t === 'vocab' ? rec.id : rec.id && WORD[rec.id] ? rec.id : null, l: rec.l ?? item?.l ?? null, at: at || Date.now() });
+    C.log = C.log.slice(0, 300);
+    if (!quiet) coachSave();
+  } catch (e) {}
+}
+let coachTimer = null;
+function coachSave() { LS.set('coach', coachState()); clearTimeout(coachTimer); coachTimer = setTimeout(async () => { if (db) { try { await db.doc('progress/coach').set({ coach: state.coach, updatedAt: Date.now() }); } catch (e) {} } }, 1500); }
+function coachSeed() { // learn from everything already recorded the first time the Coach runs
+  const C = coachState(); if (C.seeded) return;
+  for (const r of state.results.slice().reverse()) for (const x of r.recs || []) coachObserve(x, null, true, r.finishedAt || Date.now());
+  C.seeded = true; coachSave();
+}
+function coachRank() {
+  const C = coachState(), now = Date.now();
+  return Object.entries(C.codes).filter(([c, e]) => e.status !== 'mastered').map(([c, e]) => { const miss = coachDecay(e.miss, now), hit = coachDecay(e.hit, now); return { c, miss, hit, lvl: e.lvl || 0, w: (miss / (1 + hit * 0.6)) * ({ vocab: 0.1, spelling: 0.15 }[c] || 1) }; })
+    .filter(x => CODES[x.c] && x.miss >= 0.5).sort((a, b) => b.w - a.w);
+}
+const coachMastered = () => Object.entries(coachState().codes).filter(([c, e]) => e.status === 'mastered' && CODES[c]).map(([c, e]) => ({ c, due: e.due, box: e.box }));
+const coachDue = () => coachMastered().filter(x => x.due <= Date.now());
+/* ---------- drills per mistake type ---------- */
+const FLEETING = [['ребёнок', 'ребёнка'], ['отец', 'отца'], ['день', 'дня'], ['рынок', 'рынка'], ['кусок', 'куска'], ['потолок', 'потолка'], ['американец', 'американца'], ['японец', 'японца'], ['немец', 'немца'], ['иностранец', 'иностранца'], ['конец', 'конца'], ['сон', 'сна'], ['рот', 'рта'], ['лёд', 'льда'], ['Павел', 'Павла'], ['Лев', 'Льва'], ['Пётр', 'Петра'], ['церковь', 'церкви'], ['любовь', 'любви'], ['подарок', 'подарка'], ['звонок', 'звонка'], ['угол', 'угла'], ['ветер', 'ветра'], ['палец', 'пальца'], ['кошелёк', 'кошелька'], ['значок', 'значка'], ['городок', 'городка'], ['посёлок', 'посёлка']];
+const SPELL5 = [['с ___ (Саша)', 'Сашей'], ['с ___ (Наташа)', 'Наташей'], ['с ___ (Миша)', 'Мишей'], ['с ___ (Маша)', 'Машей'], ['с ___ (Даша)', 'Дашей'], ['с ___ (Паша)', 'Пашей'], ['с ___ (Серёжа)', 'Серёжей'], ['с ___ (Лёша)', 'Лёшей'],
+  ['Это ___ мороженое. (хороший)', 'хорошее'], ['Это ___ молоко. (свежий)', 'свежее'], ['У нас ___ дело. (общий)', 'общее'], ['___ молоко (горячий)', 'горячее'], ['Это ___ решение. (лучший)', 'лучшее'], ['Она говорит с ___ (муж)', 'мужем'],
+  ['Мы гуляли по ___ (улица)', 'улице'], ['Он живёт за ___ (граница)', 'границей'], ['Он работает ___ (переводчик, Instr.)', 'переводчиком'], ['перед ___ (гостиница)', 'гостиницей'], ['Я познакомился с ___ (американец)', 'американцем'], ['с ___ (товарищ)', 'товарищем']];
+const spell7Break = w => w.replace(/([гкхжшчщ])и/, '$1ы') !== w ? w.replace(/([гкхжшчщ])и/, '$1ы') : w.replace(/([гкхжшчщц])у/, '$1ю') !== w ? w.replace(/([гкхжшчщц])у/, '$1ю') : w.replace(/([гкхжшчщц])а/, '$1я');
+const cItem = (code, it) => Object.assign({ t: 'g', gtype: 'c:' + code, gskill: 'coach', ccode: code }, it);
+const lgFor = re => () => { const ps = LGRAM.filter(g => g.l <= curLesson() && re.test(g.topic)); if (!ps.length) return null; const g = pick(ps, 1)[0]; const x = lgItem(DIAG_CASE_RE.test(g.topic) ? 'case' : 'gram')(g); return x.opts ? { kind: 'mc', l: g.l, title: g.topic, prompt: esc(g.p), opts: x.opts, ans: g.ans } : { kind: 'type', l: g.l, title: g.topic, prompt: esc(g.p) + (g.cue ? ` <span class="hint">${esc(g.cue)}</span>` : ''), ans: x.ans, score: 'exact' }; };
+const placesUp = () => PLACES.filter(x => x.l <= curLesson());
+const CD = {
+  spell7: () => { const ws = wordsUpTo().filter(w => !/ /.test(w.ru) && /[гкхжшчщц][иуа]/.test(w.ru) && w.ru.length <= 12); const w = pick(ws, 1)[0], bad = spell7Break(w.ru);
+    return Math.random() < .5 ? { kind: 'mc', l: w.l, wid: w.id, title: 'Which spelling is right?', prompt: esc(w.en), opts: shuffle([w.ru, bad]), ans: w.ru, after: `${w.ru} — ${w.en}` }
+      : { kind: 'type', l: w.l, wid: w.id, audio: [['A', w.ru]], plays: 3, title: 'Write the word you hear (watch the spelling rule)', ans: acceptFor(w), score: 'exact', after: `${w.ru} — ${w.en}` }; },
+  spell5: () => { const [p, a] = pick(SPELL5, 1)[0], bad = a.replace(/([жшчщц])е(?=[ймйю]?|$)/, '$1о'); return Math.random() < .5 && bad !== a ? { kind: 'mc', title: 'Which spelling is right?', prompt: esc(p), opts: shuffle([a, bad]), ans: a, after: p.replace('___', a).replace(/ \(.*\)$/, '') } : { kind: 'type', title: 'Fill in the word', prompt: esc(p), ans: [a], score: 'exact', after: p.replace('___', a).replace(/ \(.*\)$/, '') }; },
+  softsign: () => { const ws = wordsUpTo().filter(w => !/ /.test(w.ru) && /ь/.test(w.ru) && w.ru.length <= 12); const w = pick(ws, 1)[0]; return { kind: 'mc', l: w.l, wid: w.id, title: 'Which spelling is right?', prompt: esc(w.en), opts: shuffle([w.ru, w.ru.replace(/ь/, ''), w.ru.replace(/([бвгджзклмнпрстфхцчшщ])(?!ь)([аеёиоуыэюя]|$)/, '$1ь$2')].filter((x, i, a) => a.indexOf(x) === i && x !== '')), ans: w.ru, after: `${w.ru} — ${w.en}` }; },
+  prep_vna: () => { const x = pick(placesUp(), 1)[0], dir = Math.random() < .5; return { kind: 'type', l: x.l, title: dir ? 'Куда? Type в or на and the place' : 'Где? Type в or на and the place', prompt: esc(dir ? (x.far ? 'Завтра мы едем ___.' : 'Сейчас я иду ___.') : 'Мы сейчас ___.') + ` <span class="hint">(${esc(x.n)})</span>`, ans: [dir ? x.dir : x.loc], score: 'exact' }; },
+  prep_missing: () => CD.prep_vna(),
+  locdir: () => { const x = pick(placesUp(), 1)[0], dir = Math.random() < .5; return { kind: 'type', l: x.l, title: dir ? 'Куда? (direction → Accusative)' : 'Где? (location → Prepositional)', prompt: esc(dir ? (x.far ? 'Завтра мы едем ___.' : 'Сейчас я иду ___.') : 'Мы сейчас ___.') + ` <span class="hint">(${esc(x.n)})</span>`, ans: [dir ? x.dir : x.loc], score: 'exact' }; },
+  ob: () => { if (Math.random() < .5) { const x = pick(PLACES.filter(x => x.l <= curLesson()).concat(PEOPLE.filter(x => x.l <= curLesson())), 1)[0]; return { kind: 'type', l: x.l, title: 'о or об? Type it with the word', prompt: esc('Мы часто говорим ___.') + ` <span class="hint">(${esc(x.n)})</span>`, ans: [x.ab], score: 'exact' }; }
+    const n = pick(NN.names, 1)[0], F = nameForms(n.ru); return { kind: 'type', title: 'о or об? Type it with the name', prompt: esc('Она часто думает ___.') + ` <span class="hint">(${esc(n.ru)})</span>`, ans: [ob(F.p) + ' ' + F.p], score: 'exact' }; },
+  acc_anim: () => { if (Math.random() < .6) { const x = pick(PEOPLE.filter(x => x.l <= curLesson()), 1)[0]; return { kind: 'type', l: x.l, title: 'Accusative of a person', prompt: esc(pick(['Я хорошо знаю ___.', 'Вчера я видел ___.', 'Мы ждём ___.'], 1)[0]) + ` <span class="hint">(${esc(x.n)})</span>`, ans: [x.acc], score: 'exact' }; }
+    const n = pick(NN.names, 1)[0]; return { kind: 'type', title: 'Accusative of a person', prompt: esc('Я давно не видел ___.') + ` <span class="hint">(${esc(n.ru)})</span>`, ans: [nameForms(n.ru).a], score: 'exact' }; },
+  adj_agree: () => (Math.random() < .5 ? lgFor(/Adjective|adjectives|Superlatives|Comparatives|который|свой/)() : null) || (() => { const x = pick(CASE_FIXED.filter(x => /Adjective/.test(x.topic) && x.l <= curLesson()), 1)[0]; return x ? { kind: 'type', l: x.l, title: 'Make the adjective agree', prompt: esc(x.p) + (x.cue ? ` <span class="hint">${esc(x.cue)}</span>` : ''), ans: x.ans, score: 'exact' } : null; })(),
+  case_end: () => (Math.random() < .5 ? GB.case() : lgFor(DIAG_CASE_RE)()) || GB.case(),
+  plural_hs: () => { const x = pick(PEOPLE.concat(THINGS).filter(x => x.l <= curLesson() && x.pl), 1)[0]; return { kind: 'type', l: x.l, title: 'Plural: ы or и?', prompt: esc('Это наши ___.') + ` <span class="hint">(${esc(x.n)} → plural)</span>`, ans: [x.pl], score: 'exact' }; },
+  fleeting: () => { const [n, g] = pick(FLEETING, 1)[0]; return { kind: 'type', title: 'Genitive: watch the fleeting vowel', prompt: esc(pick(['У нас нет ___.', 'Это подарок для ___.', 'Мы ждали около ___.'], 1)[0]) + ` <span class="hint">(${esc(n)})</span>`, ans: [g], score: 'exact', after: `${n} → ${g}` }; },
+  conj: () => GB.conj(), stem: () => GB.conj(),
+  past: () => GB.past(), tense: () => (Math.random() < .5 ? GB.past() : GB.conj()),
+  aspect: () => lgFor(/Aspect|спросить|выиграть|ставить|снимать/)() || GB.lgram(),
+  motion: () => (Math.random() < .5 ? GB.motion() : lgFor(/летать|плавать|пойти|Prefixed|Carrying|Leading|Transport|motion/)()) || GB.motion(),
+  est: () => GB.est(), neg: () => GB.neg(), order: () => GB.order(),
+  numform: () => curLesson() < 18 ? GB.nums() : NB[pick(curLesson() >= 35 ? ['n:agree', 'n:ncases', 'n:full'] : ['n:agree', 'n:full'], 1)[0]]({}),
+  names: () => NB[pick(['n:patr', 'n:sur', 'n:ncase'], 1)[0]]({}),
+  spelling: () => coachWordItem(['spelling', 'spell7', 'spell5', 'softsign']),
+  vocab: () => coachWordItem(['vocab']),
+};
+function coachWordItem(codes) {
+  const ids = [...new Set(coachState().log.filter(x => codes.includes(x.c) && x.id && WORD[x.id]).map(x => x.id))];
+  const w = ids.length ? WORD[pick(ids, 1)[0]] : one(wordsUpTo());
+  return { kind: 'type', l: w.l, wid: w.id, title: 'Write it in Russian', prompt: esc(w.en), ans: acceptFor(w), score: 'exact', after: `${w.ru} — ${w.en}` };
+}
+/* ---------- the difficulty ladder: pick → type → in a sentence → by ear ---------- */
+const isRu = x => typeof x === 'string' && /[а-яё]/i.test(x) && !/[a-z]/i.test(x);
+const plainPrompt = html => { const d = document.createElement('div'); d.innerHTML = String(html || '').replace(/<span class="hint">[\s\S]*?<\/span>/g, ''); return d.textContent.replace(/\s+/g, ' ').trim(); };
+function fakeForms(right) {
+  const out = []; for (const x of [...endingFakes(right), ...variants(right), spell7Break(right)]) { const m = matchCase(right, x); if (norm(m) !== norm(right) && !out.some(o => norm(o) === norm(m))) out.push(m); }
+  return shuffle(out);
+}
+function atLevel(it, lvl, code) {
+  if (!it) return it;
+  const right = Array.isArray(it.ans) ? it.ans[0] : it.ans, ru = isRu(right);
+  if (!ru) return Object.assign(it, { step: null });              // English-answer items keep their own format
+  if (lvl === 0) {
+    if (it.kind === 'mc') return Object.assign(it, { step: 0 });
+    const opts = fakeForms(right).slice(0, 3); if (opts.length < 2) return Object.assign(it, { step: 1 });
+    return Object.assign(it, { kind: 'mc', opts: shuffle([right, ...opts]), ans: right, score: undefined, step: 0, title: 'Pick the right one · ' + (it.title || '') });
+  }
+  if (lvl === 2 && it.wid && WORD[it.wid]) {
+    const c = (contextsFor(WORD[it.wid]) || [])[0];
+    if (c && c.ru && c.form) { const re = new RegExp(c.form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); if (re.test(c.ru)) return Object.assign(it, { kind: 'type', opts: undefined, audio: undefined, step: 2, title: 'Use it in a sentence', prompt: esc(c.ru.replace(re, '___')) + ` <span class="hint">(${esc(WORD[it.wid].en)})</span>`, ans: [c.form], score: 'exact', after: c.ru }); }
+  }
+  if (lvl === 3) {
+    const txt = plainPrompt(it.prompt), full = /___/.test(txt) ? txt.replace('___', right) : right;
+    return Object.assign(it, { kind: 'type', opts: undefined, audio: [['A', full]], plays: 2, step: 3, title: /___/.test(txt) ? 'Listen, then type the missing part' : 'Listen and write what you hear', prompt: /___/.test(txt) ? esc(txt) : '', ans: [right].concat(Array.isArray(it.ans) ? it.ans.slice(1) : []), score: 'exact', after: full });
+  }
+  if (it.kind === 'mc') { const hint = it.opts.length <= 4 && code !== 'spell7' && code !== 'softsign' && code !== 'spell5' ? ` <span class="hint">(${esc(it.opts.join(' / '))})</span>` : ''; return Object.assign(it, { kind: 'type', prompt: (it.prompt || '') + hint, ans: [right], opts: undefined, score: 'exact', step: lvl }); }
+  return Object.assign(it, { step: lvl });
+}
+function buildCoach(opt) {
+  const C = coachState(), due = coachDue().map(x => x.c);
+  const codes = opt.codes && opt.codes.length ? opt.codes : coachRank().slice(0, 3).map(x => x.c);
+  const out = [], n = opt.size || 12;
+  // quick checks on mastered problems that are due (up to 2 in a normal round)
+  const checks = opt.recheck ? due : (opt.codes ? [] : due.slice(0, 2));
+  for (const c of checks) { let it = null; for (let k = 0; k < 4 && !it; k++) { try { it = CD[c] && CD[c](); } catch (e) { it = null; } } if (it) out.push(Object.assign(cItem(c, atLevel(it, 1, c)), { recheck: true })); }
+  const main = opt.recheck ? [] : codes;
+  for (let i = 0; i < n * 4 && out.length < n && main.length; i++) {
+    const c = main[out.length % main.length]; let it = null;
+    for (let k = 0; k < 4 && !it; k++) { try { it = CD[c] && CD[c](); } catch (e) { it = null; } }
+    if (!it) continue; out.push(cItem(c, atLevel(it, (C.codes[c] || {}).lvl || 0, c)));
+  }
+  return out;
+}
+function summarizeCoach(recs) {
+  const by = {}, missed = []; let sum = 0;
+  for (const r of recs) { const sc = r.score ?? (r.ok ? 1 : 0), c = (r.gtype || '').slice(2); sum += sc; const b = by[c] = by[c] || [0, 0]; b[0] += sc; b[1]++; if (sc < .75) missed.push({ c, label: r.label, ans: r.ans }); }
+  return { n: recs.length, score: recs.length ? Math.round(100 * sum / recs.length) : 0, byCode: Object.fromEntries(Object.entries(by).map(([c, [s, k]]) => [c, [Math.round(100 * s / k), k]])), missed };
+}
+function coachRecap(r) {
+  const s = r.summary;
+  return `<div class="eyebrow" style="margin-top:28px">Coach · drill finished</div><h1>${s.score}%</h1>
+    <div class="actions"><button class="btn" id="cagain">Same drill again →</button><button class="btn ghost" id="cback">Back to Coach</button></div>
+    <div class="bars" style="margin-top:14px">${Object.entries(s.byCode).map(([c, v]) => bar(CODES[c]?.name || c, v[0], v[1])).join('')}</div>
+    ${s.missed.length ? `<h3>Review these</h3><div class="tbl"><table><tr><th>Problem</th><th>Item</th><th>Answer</th></tr>${s.missed.map(m => `<tr><td class="small">${esc(CODES[m.c]?.name || '')}</td><td class="ru">${esc(m.label || '')}</td><td class="ru">${esc(Array.isArray(m.ans) ? m.ans[0] : m.ans || '')}</td></tr>`).join('')}</table></div>` : '<p>No mistakes this time.</p>'}`;
+}
+/* ---------- My report: the same reading a tutor would do, as rules ---------- */
+function reportData() {
+  const R = { parts: [], strong: [], weak: [], words: null, speed: null, listen: null, problems: coachRank().slice(0, 3), mastered: coachMastered(), due: coachDue(), lessons: [], plan: [] };
+  for (const k of DIAG_KEYS()) { const P = pooled(k); if (P) R.parts.push({ k, name: SECTIONS[k].title, score: P.summary.score, time: P.summary.time }); }
+  R.strong = R.parts.filter(x => x.score >= 75).sort((a, b) => b.score - a.score); R.weak = R.parts.filter(x => x.score < 60).sort((a, b) => a.score - b.score);
+  // recognition vs spelling
+  const tested = Object.values(state.progress).filter(p => p && p.n);
+  if (tested.length >= 20) { const rec = tested.filter(p => (p.best || 0) >= 1).length, sp = tested.filter(p => (p.best || 0) >= 3).length; R.words = { n: tested.length, rec: Math.round(100 * rec / tested.length), spell: Math.round(100 * sp / tested.length) }; }
+  // speed (all recorded answers)
+  const all = state.results.flatMap(r => r.recs || []).filter(x => x.ms > 0 && !/pass|speak|script/.test(x.t || ''));
+  if (all.length >= 15) { const ok = all.filter(x => recOk(x)), slow = ok.filter(x => x.ms > slowLimit(answerKind(x))); const bySec = {}; for (const r of state.results) if (DIAG_KEYS().includes(r.section)) for (const x of r.recs || []) if (x.ms > 0 && !/pass|speak/.test(x.t)) (bySec[r.section] = bySec[r.section] || []).push(x.ms);
+    const secs = Object.entries(bySec).map(([k, a]) => ({ name: SECTIONS[k].title, s: Math.round(median(a) / 100) / 10 })).sort((a, b) => b.s - a.s);
+    R.speed = { okN: ok.length, slowN: slow.length, pct: ok.length ? Math.round(100 * slow.length / ok.length) : 0, slowest: secs[0], fastest: secs[secs.length - 1], limit: Math.round(slowLimit('type') / 1000) }; }
+  // listening habits
+  const ps = state.results.flatMap(r => r.recs || []).filter(x => x.t === 'pass' && x.of);
+  if (ps.length) { const avg = a => a.length ? Math.round(100 * a.reduce((s, x) => s + x.score / x.of, 0) / a.length) : null;
+    R.listen = { n: ps.length, plays: Math.round(10 * ps.reduce((s, x) => s + (x.plays || 0), 0) / ps.length) / 10, notes: avg(ps.filter(x => x.usedNotes)), noNotes: avg(ps.filter(x => !x.usedNotes)), preview: avg(ps.filter(x => x.preview)), reactive: avg(ps.filter(x => !x.preview)) }; }
+  // lessons to revisit
+  const g = lessonGrid(); R.lessons = Object.entries(g).filter(([l]) => +l > 0).map(([l, v]) => { const t = Object.values(v).reduce((a, x) => [a[0] + x[0], a[1] + x[1]], [0, 0]); return { l: +l, pct: Math.round(100 * t[0] / t[1]), n: t[1] }; }).filter(x => x.n >= 5 && x.pct < 70).sort((a, b) => a.pct - b.pct).slice(0, 3);
+  // plan for the week
+  const due = Object.values(state.progress).filter(p => p && p.due && p.due <= Date.now() + DAYMS).length;
+  R.plan.push(`Every day: one Practice session${due ? ` (${due} word${due === 1 ? '' : 's'} due by tomorrow)` : ''}. It ends with a few Coach items.`);
+  if (R.problems.length) R.plan.push(`4 times this week: a Coach round on ${R.problems.map(x => CODES[x.c].name.split(':')[0].toLowerCase()).join(', ')}.`);
+  if (R.due.length) R.plan.push(`A quick Coach check on ${R.due.length} problem${R.due.length === 1 ? '' : 's'} you mastered earlier.`);
+  if (R.words && R.words.rec - R.words.spell >= 20) R.plan.push('3 times: Words → Write for your current lesson, to close the gap between recognizing and spelling.');
+  const sp = R.parts.find(x => x.k === 'speaking'), li = R.parts.find(x => x.k === 'listening');
+  if (sp && sp.score < 50) R.plan.push('3 times: Practice → Speaking scripts, out loud.');
+  if (li && li.score < 65) R.plan.push('2 times: a Grind round with only Listening selected.');
+  if (R.lessons.length) R.plan.push(`Retest Lesson ${R.lessons[0].l} in the Diagnostic (What to test → One lesson).`);
+  if (R.problems.some(x => /numform|names/.test(x.c))) R.plan.push('Twice: a mixed round in Names & Numbers.');
+  R.plan = R.plan.slice(0, 6);
+  return R;
+}
+function reportLines(R) {
+  const L = [];
+  if (R.parts.length) {
+    if (R.strong.length) L.push(`<b>Strongest:</b> ${R.strong.map(x => `${esc(x.name)} (${x.score}%)`).join(', ')}.`);
+    if (R.weak.length) L.push(`<b>Needs the most work:</b> ${R.weak.map(x => `${esc(x.name)} (${x.score}%)`).join(', ')}.`);
+    if (!R.strong.length && !R.weak.length) L.push(`<b>Diagnostic:</b> ${R.parts.map(x => `${esc(x.name)} ${x.score}%`).join(', ')}. Nothing is weak, nothing is solid yet.`);
+  } else L.push('<b>Diagnostic:</b> not taken yet. Take at least one part so the report has something to go on.');
+  if (R.words) L.push(R.words.rec - R.words.spell >= 20
+    ? `<b>Words:</b> you recognize ${R.words.rec}% of the ${R.words.n} words you’ve been tested on, but can spell only ${R.words.spell}%. You read better than you write, so typing practice pays off most.`
+    : `<b>Words:</b> you recognize ${R.words.rec}% and spell ${R.words.spell}% of the ${R.words.n} words tested. Recognition and spelling are close, so keep reviewing as you are.`);
+  if (R.speed) L.push(`<b>Speed:</b> ${R.speed.pct}% of your right answers were slow for you (over about ${R.speed.limit} s on typed answers), so they aren’t automatic yet and come back sooner.${R.speed.slowest && R.speed.fastest && R.speed.slowest.name !== R.speed.fastest.name ? ` You’re slowest in ${esc(R.speed.slowest.name)} (median ${R.speed.slowest.s} s) and fastest in ${esc(R.speed.fastest.name)} (${R.speed.fastest.s} s).` : ''}`);
+  if (R.listen) { const bits = [`you average ${R.listen.plays} plays per passage`]; if (R.listen.notes != null && R.listen.noNotes != null) bits.push(R.listen.notes > R.listen.noNotes + 10 ? `taking notes helps you a lot (${R.listen.notes}% vs ${R.listen.noNotes}%), so keep doing it` : `notes don’t change your score much (${R.listen.notes}% vs ${R.listen.noNotes}%)`); if (R.listen.preview != null && R.listen.reactive != null) bits.push(R.listen.preview > R.listen.reactive + 10 ? `you do much better when you see the questions first (${R.listen.preview}% vs ${R.listen.reactive}%), so practice reactive listening` : `seeing the questions first barely changes your score`); L.push(`<b>Listening:</b> ${bits.join('; ')}.`); }
+  if (R.problems.length) L.push(`<b>Mistake patterns:</b> ${R.problems.map(x => esc(CODES[x.c].name)).join('; ')}.${R.mastered.length ? ` Mastered so far: ${R.mastered.length}.` : ''}`);
+  if (R.lessons.length) L.push(`<b>Lessons to revisit:</b> ${R.lessons.map(x => `Lesson ${x.l} (${x.pct}%)`).join(', ')}.`);
+  return L;
+}
+function reportText() { const R = reportData(), plain = h => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent; }; return ['My report — ' + new Date().toLocaleDateString(), ...reportLines(R).map(x => '• ' + plain(x)), 'This week:', ...R.plan.map(x => '– ' + x)].join('\n'); }
+function viewCoach() {
+  coachSeed();
+  const R = coachRank(), C = coachState(), top = R.slice(0, 5), mastered = coachMastered(), due = coachDue();
+  if (!top.length && !mastered.length) return `<div class="eyebrow" style="margin-top:28px">Coach</div><h1>Your Coach</h1>
+    <p>The Coach studies every wrong answer you give anywhere on the site and works out what <i>kind</i> of mistake it was: a spelling rule, a case ending, в vs на, aspect, verbs of motion, and so on. Then it explains your top problems and builds drills aimed at them.</p>
+    <div class="notice">Nothing to coach yet. Take a part of the <b>Diagnostic</b> or do a <b>Practice</b> session, then come back.</div>
+    <div class="actions"><button class="btn" data-go="home">Go to the Diagnostic →</button></div>`;
+  const D = reportData();
+  const ex = c => C.log.filter(x => x.c === c).slice(0, 3);
+  const trend = x => { const h = x.hit, m = x.miss; return h > m ? '<span class="pill good">improving</span>' : h > m / 3 ? '<span class="pill warn">getting there</span>' : '<span class="pill bad">needs work</span>'; };
+  const ladder = lvl => `<div class="ladder">${LADDER.map((t, i) => `<span class="${i < lvl ? 'done' : i === lvl ? 'now' : ''}">${i + 1}. ${t}</span>`).join('')}</div>`;
+  const when = t => { const d = Math.round((t - Date.now()) / DAYMS); return d <= 0 ? 'due now' : d === 1 ? 'tomorrow' : `in ${d} days`; };
+  return `<div class="eyebrow" style="margin-top:28px">Coach · built from your mistakes</div><h1>Your Coach</h1>
+    <details class="card report" ${LS.get('reportOpen', true) ? 'open' : ''}><summary><b>My report</b> <span class="muted small">· updated as you work</span></summary>
+      <ul class="small">${reportLines(D).map(x => `<li>${x}</li>`).join('')}</ul>
+      <p class="small" style="margin-bottom:4px"><b>Plan for this week</b></p><ol class="small" style="margin-top:0">${D.plan.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+      <div class="actions"><button class="btn sm ghost" id="rcopy">Copy report</button></div></details>
+    <div class="card"><div class="eyebrow">Today’s coaching round</div><p class="small" style="margin-top:4px">${top.slice(0, 3).map(x => esc(CODES[x.c].name)).join(' · ')}${due.length ? ` · plus ${Math.min(2, due.length)} quick check${due.length === 1 ? '' : 's'}` : ''}</p>
+      <div class="actions"><button class="btn" id="cplan" ${top.length || due.length ? '' : 'disabled'}>Start (12 items) →</button>${due.length ? `<button class="btn ghost" id="crecheck">Quick checks only (${due.length})</button>` : ''}</div></div>
+    <p class="small">Each problem climbs four steps: <b>pick it</b>, <b>type it</b>, <b>use it in a sentence</b>, <b>hear it and write it</b>. Three quick right answers in a row move you up a step; a miss moves you down one. Right but slow answers count half and don’t move you up. After the last step a problem is <b>mastered</b> and leaves the list, then comes back for a quick check after 7, 14, 30 and 60 days.</p>
+    ${top.map((x, i) => `<div class="gtab"><div class="eyebrow">${i + 1} · ${Math.round(x.miss)} recent mistake${Math.round(x.miss) === 1 ? '' : 's'} ${trend(x)}</div>
+      <h3 style="margin:2px 0 6px">${esc(CODES[x.c].name)}</h3>${ladder(x.lvl)}
+      <p class="small" style="margin-top:8px">${CODES[x.c].why}</p>
+      ${CODES[x.c].ex ? `<p class="small"><b>Examples:</b> <span class="ru">${esc(CODES[x.c].ex)}</span></p>` : ''}
+      ${ex(x.c).length ? `<p class="small" style="margin-bottom:4px"><b>Your mistakes:</b></p><ul class="small" style="margin-top:0">${ex(x.c).map(e => `<li>${e.typed ? `<span class="ru" style="text-decoration:line-through;color:var(--bad)">${esc(e.typed)}</span>` : '<span class="muted">(left blank)</span>'} → <span class="ru"><b>${esc(e.ans)}</b></span></li>`).join('')}</ul>` : ''}
+      <button class="btn sm" data-cc="${x.c}">Drill this (10)</button></div>`).join('')}
+    ${R.length > 5 ? `<p class="small muted">Also seen: ${R.slice(5).map(x => esc(CODES[x.c].name)).join(' · ')}</p>` : ''}
+    ${mastered.length ? `<h2>Mastered</h2><div class="card"><ul class="small" style="margin:0">${mastered.map(m => `<li><b>${esc(CODES[m.c].name)}</b> · next quick check ${when(m.due)}</li>`).join('')}</ul></div>` : ''}`;
+}
+function wireCoach(el) {
+  el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { state.view = b.dataset.go; render(); });
+  const p = $('#cplan', el); if (p) p.onclick = () => startSection('coach', { size: 12 });
+  const q = $('#crecheck', el); if (q) q.onclick = () => startSection('coach', { recheck: true, size: 6 });
+  el.querySelectorAll('[data-cc]').forEach(b => b.onclick = () => startSection('coach', { codes: [b.dataset.cc], size: 10 }));
+  const d = $('details.report', el); if (d) d.ontoggle = () => LS.set('reportOpen', d.open);
+  const c = $('#rcopy', el); if (c) c.onclick = async () => { const t = reportText(); try { await navigator.clipboard.writeText(t); toast('Report copied.'); } catch (e) { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); toast('Report copied.'); } catch (e2) { toast('Could not copy.'); } ta.remove(); } };
+}
+
+/* ============================== GENERATED PASSAGES & DIALOGUES ==============================
+   Short listening texts assembled from templates, the names/places data and the number engine.
+   Every form comes from a table or the number engine, so the Russian and the answers are correct by construction. */
+const GP = (() => {
+  const nm = g => pick(NN.names.filter(n => n.g === g), 1)[0];
+  const nick = n => n.nick.length ? n.nick[0] : n.ru;
+  const sur = g => { const s = pick(NN.sur.filter(x => x.m !== x.f), 1)[0]; return g === 'f' ? s.f : s.m; };
+  const city = (a = ['ru']) => pick(NN.places.filter(p => p.k === 'city' && a.includes(p.a) && !/Сталинград|Беслан/.test(p.ru)), 1)[0];
+  const age = n => `${RN.card(n)} ${RN.plural(n, ['год', 'года', 'лет'])}`;
+  const hrs = h => h === 1 ? 'час' : `${RN.card(h)} ${RN.plural(h, ['час', 'часа', 'часов'])}`;
+  const cap = s => s[0].toUpperCase() + s.slice(1);
+  // [m nom, f nom, m instr, f instr, English, lesson it is taught]
+  const PROF = [['врач', 'врач', 'врачом', 'врачом', 'a doctor', 11], ['инженер', 'инженер', 'инженером', 'инженером', 'an engineer', 2], ['учитель', 'учительница', 'учителем', 'учительницей', 'a teacher', 3],
+    ['водитель', 'водитель', 'водителем', 'водителем', 'a driver', 3], ['бухгалтер', 'бухгалтер', 'бухгалтером', 'бухгалтером', 'an accountant', 11], ['продавец', 'продавщица', 'продавцом', 'продавщицей', 'a salesperson', 12], ['механик', 'механик', 'механиком', 'механиком', 'a mechanic', 2]];
+  const profs = L => PROF.filter(x => x[5] <= L);
+  const prof = (g, L) => { const p = pick(profs(L), 1)[0]; return { nom: g === 'f' ? p[1] : p[0], ins: g === 'f' ? p[3] : p[2], en: p[4] }; };
+  const DAYS = [['в понедельник', 'до понедельника', 'Monday'], ['во вторник', 'до вторника', 'Tuesday'], ['в среду', 'до среды', 'Wednesday'], ['в четверг', 'до четверга', 'Thursday'], ['в пятницу', 'до пятницы', 'Friday'], ['в субботу', 'до субботы', 'Saturday'], ['в воскресенье', 'до воскресенья', 'Sunday']];
+  const OUT = [['в кино', 'to the movies', 3], ['в театр', 'to the theater', 3], ['в бассейн', 'to the pool', 9]];
+  const MEET = [['у метро', 'by the metro station', 12], ['на остановке', 'at the bus stop', 12], ['у входа', 'at the entrance', 24]];
+  const ITEMS = [['рубашка', 'рубашку', 'f', 'a shirt', 8], ['шапка', 'шапку', 'f', 'a hat', 8], ['футболка', 'футболку', 'f', 'a T-shirt', 8], ['словарь', 'словарь', 'm', 'a dictionary', 4], ['куртка', 'куртку', 'f', 'a jacket', 18], ['сумка', 'сумку', 'f', 'a bag', 18], ['шарф', 'шарф', 'm', 'a scarf', 18]];
+  const rub = n => `${RN.card(n)} ${RN.plural(n, ['рубль', 'рубля', 'рублей'])}`;
+  const he = g => g === 'f' ? 'она' : 'он', she = g => g === 'f' ? 'she' : 'he', past = (v, g) => g === 'f' ? v + 'а' : v;
+  // a question: [English question, options, index of the right one]
+  const Q = (q, right, pool, n = 3) => { const r = String(right), opts = shuffle([r, ...pick([...new Set(pool.map(String))].filter(x => x !== r), n)]); return [q, opts, opts.indexOf(r)]; };
+  const near = (x, step, k = 6) => { const s = new Set(); for (let i = 1; s.size < k; i++) { s.add(x + i * step); if (x - i * step > 0) s.add(x - i * step); } return [...s]; };
+  const cities = () => NN.places.filter(x => x.k === 'city').map(x => x.en);
+  // every optional sentence or word appears only from the lesson where its grammar and vocabulary are taught
+  const T = [
+    { l: 7, name: 'Introducing yourself', make(L) {
+      const g = pick(['m', 'f'], 1)[0], n = nm(g), dad = pick(NN.names.filter(x => x.pm), 1)[0], s = sur(g), a = rint(19, 45), cb = city(), cl = city(['ru', 'us']), p = prof(g, L), b = nm('m'), si = nm('f'), ab = rint(10, 50), as = rint(10, 50);
+      const full = `${n.ru} ${g === 'f' ? dad.pf : dad.pm} ${s}`, lines = [], en = [], qs = [], facts = [];
+      lines.push(['A', `Здравствуйте! Меня зовут ${full}.${L >= 21 ? ` Мне ${age(a)}.` : ''}`]); en.push(`Hello! My name is ${full}.${L >= 21 ? ` I am ${a}.` : ''}`);
+      qs.push(Q('What is the speaker’s first name?', n.ru, NN.names.filter(x => x.g === g).map(x => x.ru))); facts.push(`Name: ${full}`);
+      if (L >= 21) { qs.push(Q('How old is the speaker?', a, near(a, 1))); facts.push(`Age ${a}`); }
+      lines.push(['A', `${L >= 22 ? `Я ${g === 'f' ? 'родилась' : 'родился'} ${cb.prep} ${cb.loc}, а сейчас живу` : 'Сейчас я живу'} ${cl.prep} ${cl.loc}. Я ${p.nom}.`]);
+      en.push(`${L >= 22 ? `I was born in ${cb.en}, and now I live` : 'Now I live'} in ${cl.en}. I am ${p.en}.`);
+      if (L >= 22) { qs.push(Q('Where was the speaker born?', cb.en, cities())); facts.push(`Born in ${cb.en}`); }
+      qs.push(Q('Where does the speaker live now?', cl.en, cities()), Q('What does the speaker do?', p.en, profs(L).map(x => x[4]).concat(['a student', 'a soldier']))); facts.push(`Lives in ${cl.en}`, `Works as ${p.en}`);
+      if (L >= 11) { lines.push(['A', `У меня есть брат и сестра. Брата зовут ${b.ru}${L >= 21 ? `, ему ${age(ab)}` : ''}. Сестру зовут ${si.ru}${L >= 21 ? `, ей ${age(as)}` : ''}.`]);
+        en.push(`I have a brother and a sister. My brother is ${b.ru}${L >= 21 ? `, ${ab}` : ''}; my sister is ${si.ru}${L >= 21 ? `, ${as}` : ''}.`);
+        qs.push(Q('What is the brother’s name?', b.ru, NN.names.filter(x => x.g === 'm').map(x => x.ru))); facts.push(`Brother ${b.ru}`, `Sister ${si.ru}`);
+        if (L >= 21) qs.push(Q('How old is the sister?', as, near(as, 2))); }
+      return { kind: 'Monologue', title: 'Знакомство', lines, en: en.join(' '), qs: qs.slice(0, 6), facts }; } },
+    { l: 19, name: 'A phone call', make(L) {
+      const ga = pick(['m', 'f'], 1)[0], gb = pick(['m', 'f'], 1)[0], A = nm(ga), B = nm(gb), d = pick(DAYS, 1)[0], o = pick(OUT.filter(x => x[2] <= L), 1)[0], h = rint(2, 9), m = pick(MEET.filter(x => x[2] <= L), 1)[0];
+      const lines = [['A', `Алло, ${nick(B)}? Привет, это ${nick(A)}.`], ['B', `Привет, ${nick(A)}! Как дела?`], ['A', `Хорошо, спасибо. Что ты делаешь ${d[0]}?`], ['B', L >= 21 ? 'Ничего особенного. А что?' : 'Ничего. А что?'], ['A', `Давай пойдём ${o[0]}!`],
+        ['B', `${L >= 24 ? 'С удовольствием' : 'Давай'}. Во сколько?`], ['A', `В ${hrs(h)}.`], ['B', L >= 21 ? 'Хорошо. Где встретимся?' : 'Хорошо. А где?'], ['A', `${cap(m[0])}.`], ['B', `Хорошо. ${cap(d[1])}!`]];
+      return { kind: 'Dialogue', title: 'Телефонный разговор', lines, en: `${nick(A)} calls ${nick(B)} and asks what ${she(gb)} is doing on ${d[2]}. They agree to go ${o[1]} at ${h} o'clock and to meet ${m[1]}.`,
+        qs: [Q('Who is calling?', nick(A), NN.names.flatMap(x => x.nick).filter(x => x !== nick(B))), Q('What day are they talking about?', d[2], DAYS.map(x => x[2])), Q('Where are they going?', o[1], ['to the movies', 'to the theater', 'to the pool', 'to the library', 'to the park']), Q('What time?', `${h}:00`, near(h, 1).filter(x => x <= 12).map(x => `${x}:00`)), Q('Where will they meet?', m[1], MEET.map(x => x[1]).concat(['at home', 'at school'])), Q('Does the friend agree?', 'Yes', ['No, the friend is busy', 'Maybe next week', 'Only on Sunday'])],
+        facts: [`${nick(A)} calls ${nick(B)}`, `About ${d[2]}`, `They will go ${o[1]}`, `At ${h} o'clock`, `They meet ${m[1]}`] }; } },
+    { l: 18, name: 'At the store', make(L) {
+      const [i1, i2] = pick(ITEMS.filter(x => x[4] <= L), 2), p1 = pick([2500, 3200, 4800, 5600, 6900, 7500, 8300, 9900], 1)[0], p2 = pick([450, 690, 800, 1200, 1500, 1850, 2100], 1)[0];
+      const dem = i => i[2] === 'f' ? 'эта' : 'этот', card = L >= 23;
+      const lines = [['A', `Скажите, пожалуйста, сколько стоит ${dem(i1)} ${i1[0]}?`], ['B', `${cap(rub(p1))}.`], ['A', `Это дорого. А ${dem(i2)} ${i2[0]}?`], ['B', `${cap(dem(i2))} ${i2[0]} стоит ${rub(p2)}.`], ['A', `Хорошо, я возьму ${i2[1]}.${card ? ' Можно заплатить картой?' : ''}`]];
+      if (card) lines.push(['B', 'Да, конечно.']);
+      const qs = [Q('What did the customer ask about first?', i1[3], ITEMS.map(x => x[3])), Q('How much was it?', `${p1} rubles`, near(p1, 1000).map(x => `${x} rubles`)), Q('Why didn’t the customer buy it?', 'Too expensive', ['Wrong size', 'Wrong color', 'Sold out']),
+        Q('What did the customer buy?', i2[3], ITEMS.filter(x => x !== i1).map(x => x[3])), Q('How much did it cost?', `${p2} rubles`, near(p2, 100).map(x => `${x} rubles`))];
+      if (card) qs.push(Q('How does the customer pay?', 'By card', ['In cash', 'With dollars', 'Later']));
+      return { kind: 'Dialogue', title: 'В магазине', lines, en: `A customer asks how much ${i1[3]} costs: ${p1} rubles. That's too expensive. ${cap(i2[3])} costs ${p2} rubles, so the customer takes it${card ? ' and pays by card' : ''}.`, qs,
+        facts: [`Asked about ${i1[3]}`, `It cost ${p1} rubles`, `Too expensive`, `Bought ${i2[3]}`, `For ${p2} rubles`].concat(card ? ['Paid by card'] : []) }; } },
+    { l: 14, name: 'A daily routine', make(L) {
+      const g = pick(['m', 'f'], 1)[0], n = nm(g), p = prof(g, L), h1 = rint(5, 8), how = pick([['на автобусе', 'by bus'], ['на метро', 'by metro'], ['на машине', 'by car'], ['на трамвае', 'by streetcar']], 1)[0], h3 = h1 + rint(1, 2), lunch = pick([[12, 'в двенадцать часов'], [1, 'в час'], [2, 'в два часа']], 1)[0];
+      const eve = pick([['читает', 'reads', 7], ['гуляет', 'goes for a walk', 11], ['занимается спортом', 'does sports', 23]].filter(x => x[2] <= L), 1)[0], h5 = rint(10, 12);
+      const lines = [['A', `${n.ru} — ${p.nom}. Каждый день ${he(g)} встаёт в ${hrs(h1)} утра.`], ['A', L >= 16 ? `Потом ${he(g)} едет на работу ${how[0]}. Работа начинается в ${hrs(h3)}.` : `Потом ${he(g)} едет на работу ${how[0]}. В ${hrs(h3)} ${he(g)} уже на работе.`],
+        ['A', `Обедает ${he(g)} ${lunch[1]}. Вечером ${he(g)} ${eve[0]}, а ${L >= 30 ? 'ложится спать' : 'идёт спать'} в ${hrs(h5)}.`]];
+      return { kind: 'Monologue', title: 'Распорядок дня', lines, en: `${n.ru} is ${p.en}. Every day ${she(g)} gets up at ${h1} a.m., goes to work ${how[1]}, starts work at ${h3}, has lunch at ${lunch[0]}, ${eve[1]} in the evening and goes to bed at ${h5}.`,
+        qs: [Q('What does the person do?', p.en, profs(L).map(x => x[4]).concat(['a student', 'a soldier'])), Q('What time does the person get up?', `${h1}:00`, near(h1, 1).map(x => `${x}:00`)), Q('How does the person get to work?', how[1], ['by bus', 'by metro', 'by car', 'by streetcar', 'on foot']),
+          Q('When does work start?', `${h3}:00`, near(h3, 1).map(x => `${x}:00`)), Q('What does the person do in the evening?', eve[1], ['reads', 'goes for a walk', 'does sports', 'goes to the movies', 'watches TV']), Q('When does the person go to bed?', `${h5}:00`, ['9:00', '10:00', '11:00', '12:00', '1:00'])],
+        facts: [`${n.ru}, ${p.en}`, `Gets up at ${h1}`, `Goes to work ${how[1]}`, `Work at ${h3}`, `Lunch at ${lunch[0]}`, `Evening: ${eve[1]}`, `Bed at ${h5}`] }; } },
+    { l: 23, name: 'A biography', make(L) {
+      const g = pick(['m', 'f'], 1)[0], n = nm(g), dad = pick(NN.names.filter(x => x.pm), 1)[0], s = sur(g), full = `${n.ru} ${g === 'f' ? dad.pf : dad.pm} ${s}`, d = rint(1, 28), mo = rint(0, 11), y = rint(1955, 2003), y2 = y + pick([17, 18], 1)[0], k = pick([2, 3, 4, 5, 6, 10], 1)[0], cb = city(), c2 = city(), c3 = city(['ru', 'us']), p = prof(g, L), army = L >= 32 && Math.random() < .5;
+      const uni = L >= 39;
+      return { kind: 'Monologue', title: 'Биография', lines: [['A', `${full} ${g === 'f' ? 'родилась' : 'родился'} ${RN.ord(d, 'n.g')} ${MONTHS[mo]} ${RN.ord(y, 'm.g')} года ${cb.prep} ${cb.loc}.`],
+          ['A', `В ${RN.ord(y2, 'm.p')} году ${he(g)} ${past('окончил', g)} школу${uni ? ` и ${past('поступил', g)} в университет` : ''}.`], ['A', army ? `Потом ${he(g)} ${past('служил', g)} в армии ${age(k)}.` : `Потом ${he(g)} ${past('работал', g)} ${c2.prep} ${c2.loc} ${age(k)}.`],
+          ['A', `Сейчас ${he(g)} живёт ${c3.prep} ${c3.loc} и работает ${p.ins}.`]],
+        en: `${full} was born on ${MONTHS_EN[mo]} ${d}, ${y}, in ${cb.en}. In ${y2} ${she(g)} finished school${uni ? ' and entered university' : ''}. Then ${she(g)} ${army ? 'served in the army' : 'worked in ' + c2.en} for ${k} years. Now ${she(g)} lives in ${c3.en} and works as ${p.en}.`,
+        qs: [Q('In what year was the person born?', y, near(y, 1)), Q('Where was the person born?', cb.en, cities()), Q('When did the person finish school?', y2, near(y2, 1)),
+          Q(army ? 'How many years did the person serve in the army?' : 'How many years did the person work there?', k, [1, 2, 3, 4, 5, 6, 7, 8, 10, 12].filter(x => x !== k)), Q('Where does the person live now?', c3.en, cities()), Q('What does the person do now?', p.en, profs(L).map(x => x[4]).concat(['a student', 'a soldier']))],
+        facts: [`${full}`, `Born ${MONTHS_EN[mo]} ${d}, ${y}`, `In ${cb.en}`, `Finished school in ${y2}`, army ? `Served in the army ${k} years` : `Worked in ${c2.en} ${k} years`, `Lives in ${c3.en}`, `Works as ${p.en}`] }; } },
+    { l: 33, name: 'Military news', make(L) {
+      const r = pick(NN.places.filter(p => p.k === 'region' && p.a === 'ru' && !/Крым|Чечня|Дагестан/.test(p.ru)), 1)[0], N = pick([2000, 3000, 5000, 7000, 10000, 12000, 15000, 20000], 1)[0], K = pick([5, 6, 8, 10, 12, 15, 20, 25, 30], 1)[0], S = pick([5, 7, 9, 10, 15, 20, 40, 50], 1)[0], d = pick([5, 6, 7, 8, 9, 10, 12, 14], 1)[0], end = rint(1, 28), mo = rint(0, 11), gen = sur('m');
+      return { kind: 'Monologue', title: 'Военные новости', lines: [['A', `Сегодня ${r.prep} ${r.loc} начались военные учения. В учениях принимают участие ${RN.card(N)} военнослужащих, ${RN.card(K)} самолётов и ${RN.card(S)} танков.`],
+          ['A', `Учения продлятся ${RN.card(d)} дней и закончатся ${RN.ord(end, 'n.g')} ${MONTHS[mo]}.`], ['A', `Командующий учениями генерал ${gen} сказал, что войска находятся в полной боевой готовности.`]],
+        en: `Military exercises began today in ${r.en}. ${N} troops, ${K} aircraft and ${S} tanks are taking part. The exercises will last ${d} days and end on ${MONTHS_EN[mo]} ${end}. General ${gen}, who commands the exercises, said the troops are at full combat readiness.`,
+        qs: [Q('Where are the exercises?', r.en, NN.places.filter(x => x.k === 'region' && x.a === 'ru').map(x => x.en)), Q('How many troops take part?', N.toLocaleString('en-US'), [2000, 3000, 5000, 7000, 10000, 12000, 15000, 20000, 25000].map(x => x.toLocaleString('en-US'))), Q('How many aircraft?', K, [5, 6, 8, 10, 12, 15, 20, 25, 30, 40]),
+          Q('How many tanks?', S, [5, 7, 9, 10, 15, 20, 30, 40, 50]), Q('How long will the exercises last?', `${d} days`, [5, 6, 7, 8, 9, 10, 12, 14, 20].map(x => `${x} days`)), Q('What did the general say?', 'The troops are at full combat readiness', ['The exercises were canceled', 'The troops are tired', 'The weather is bad'])],
+        facts: [`Exercises in ${r.en}`, `${N} troops`, `${K} aircraft`, `${S} tanks`, `Last ${d} days`, `End ${MONTHS_EN[mo]} ${end}`, `General ${gen}: full combat readiness`] }; } },
+  ];
+  function make(lesson = curLesson()) {
+    const ok = T.filter(t => t.l <= lesson); if (!ok.length) return null;
+    const t = wpick(ok, 1, x => lessonW(Math.min(x.l, curLesson())) + .3)[0], p = t.make(lesson);
+    return Object.assign(p, { id: 'gen:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), l: t.l, gen: true, level: 'New · generated', tname: t.name });
+  }
+  return { make, T };
+})();
+
 /* ============================== START HERE (guide) ============================== */
 const GUIDE_TABS = [
   ['home', 'Diagnostic', 'Find out where you stand', 'Six short tests: vocabulary, cases & forms, grammar, English → Russian, listening and speaking. Do them in any order, one at a time; each one saves when you finish, and “Save & exit” lets you stop halfway.',
     ['Under “What to test”, pick everything so far, just one lesson, or any lessons you choose. When a new lesson starts, test only that lesson.', 'Every run adds to one overall result. For each lesson your newest attempt counts, so you can retest any lesson without redoing the rest.', 'The Settings box has the voice speed (slow, class pace, natural) and “Clear data / start over”.']],
+  ['coach', 'Coach', 'Your own mistakes, explained and drilled', 'Every wrong answer you give anywhere on the site is sorted by kind of mistake: a spelling rule, a missing ь, в vs на, где vs куда, a case ending, aspect, verbs of motion and more. The Coach shows your biggest problems with a plain explanation, your own wrong answers, and a drill built for each one.',
+    ['Start “Today’s coaching round” for your top three problems, or drill one problem at a time.', 'Each problem climbs four steps, from picking the answer to hearing it and writing it. Mastered problems leave the list and come back for quick checks after 7, 14, 30 and 60 days.', 'Right but slow answers count as half-learned, judged against your own usual speed.', '“My report” at the top sums up your strengths, weak spots, speed, listening habits and a plan for the week, and you can copy it for an instructor.']],
   ['practice', 'Practice', 'Your daily session, about 15 minutes', 'Built from your Diagnostic: the words that are due for review on a spaced-repetition schedule, plus short drills on your weakest rules, cases and grammar.',
     ['Do it once a day. Words you know come back less often; words you miss come back sooner.', 'Want just one thing today? Pick a focus instead: words, spelling rules, case endings, grammar, dictation or speaking scripts.']],
   ['grind', 'Grind', 'Extra practice, as many rounds as you want', 'Endless short rounds that mix reading, listening and speaking exercises modeled on your homework and lab books. It aims at your weakest exercise types and leans toward your most recent lessons.',
@@ -1099,6 +1662,7 @@ function viewGuide() {
       <ol class="steps">
         <li><b>Set “I’m on”</b> at the top to the lesson your class is on. Every tab follows it, so change it when you start a new lesson.</li>
         <li><b>Take the Diagnostic.</b> Do the six parts in any order; one part takes about 10–20 minutes.</li>
+        <li><b>Open the Coach.</b> It reads your mistakes, explains your biggest problems and drills them.</li>
         <li><b>Do Practice every day.</b> It’s built from your Diagnostic and takes about 15 minutes.</li>
         <li><b>Use Grind, Words and Names & Numbers</b> whenever you have extra time.</li>
         <li><b>Check Results</b> to see what’s improving and what still needs work.</li>
@@ -1117,13 +1681,14 @@ function viewGuide() {
       <li><b>iPhone or iPad:</b> open this site’s link in <b>Safari</b>, tap the <b>Share</b> button (the square with an arrow), scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>. It opens full-screen from its own icon, like an app.</li>
       <li><b>Android:</b> open the link in <b>Chrome</b>, tap the <b>⋮</b> menu, then <b>Install app</b> or <b>Add to Home screen</b>.${window.APP_INSTALL && !APP_INSTALL.ios ? ' <button class="btn sm" id="installBtn" hidden onclick="appInstall()">Install now</button>' : ''}</li>
       <li><b>Works offline:</b> after the first visit, everything except downloading updates works without signal.</li>
-      <li><b>Updates:</b> when a new version is posted, it loads the next time you open the app with signal.</li>
+      <li><b>Updates:</b> when a new version is posted, a bar pops up saying “A new version is ready” — tap <b>Update now</b>. You can also check any time: <button class="btn sm" onclick="appCheckUpdate()">Check for updates</button> <button class="btn sm ghost" onclick="appHardRefresh()">Hard refresh</button> <span class="muted small">(version ${window.APP_VERSION || ''})</span>. Neither one erases your progress.</li>
       <li><b>Your progress stays on that device.</b> Use Results → Download backup to move it to another phone or computer.</li>
     </ul></div>
     <h2>Typing, listening and saving</h2>
     <div class="card"><ul class="small" style="margin:0">
       <li><b>Typing Russian:</b> use your device’s Russian keyboard, or tap <b>Russian keyboard</b> at the top for an on-screen one. You can type е for ё, and stress marks are never needed. If you type a Latin letter by mistake (like a Latin “a” or “p”), the page warns you instead of marking it wrong.</li>
       <li><b>Listening:</b> the audio uses your device’s built-in Russian voice. If you hear nothing or an English accent, add a Russian voice: on iPhone or iPad go to Settings → Accessibility → Spoken Content → Voices → Russian; on Windows, Settings → Time & Language → Speech; on Android, the Text-to-speech settings. Chrome, Edge and Safari work best.</li>
+      <li><b>Check your sound:</b> <button class="btn sm ghost" id="gtest">▶ Test sound</button> <span id="gtestmsg" class="small"></span></li>
       <li><b>Voice speed:</b> Diagnostic → Settings. Like class tests, some audio can only be played a set number of times.</li>
       <li><b>Stopping halfway:</b> “Save & exit” keeps your place; come back later and continue.</li>
       <li><b>Saving:</b> your progress saves automatically on this device.${backup ? ' Use Results → <b>Download backup</b> now and then, and <b>Restore from backup</b> to move to another device or browser.' : ''}</li>
@@ -1131,7 +1696,7 @@ function viewGuide() {
     </ul></div>
     <div class="actions" style="margin-bottom:40px"><button class="btn" data-go="home">Start with the Diagnostic →</button></div>`;
 }
-function wireGuide(el) { el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { state.view = b.dataset.go; render(); window.scrollTo({ top: 0 }); }); }
+function wireGuide(el) { el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { state.view = b.dataset.go; render(); window.scrollTo({ top: 0 }); }); const t = $('#gtest', el); if (t) t.onclick = () => { const m = $('#gtestmsg', el); m.textContent = 'playing…'; TTS.play([['A', 'Здравствуйте! Это урок русского языка.']], ok => { m.innerHTML = ok ? 'If you heard Russian, you’re all set.' : NO_SOUND().replace(' This play wasn’t counted.', ''); }); }; }
 
 /* ============================== NAMES & NUMBERS ==============================
    People, nicknames, places and landmarks from all the course books, plus a full number engine
@@ -1523,7 +2088,7 @@ function getArchive() { try { return JSON.parse(localStorage.getItem(ARCH) || 'n
 async function dbAll(col) { if (!db) return []; try { const snap = await db.collection(col).get(); return snap.docs.map(d => ({ id: d.id, data: d.data() })); } catch (e) { return []; } }
 function reloadState() {
   Object.assign(state, { results: LS.get('results', []), progress: LS.get('progress', {}), gstats: LS.get('gstats', {}), gdays: LS.get('gdays', {}), gcur: LS.get('gcur', null), run: LS.get('run', null),
-    scripts: LS.get('scripts', {}), myScripts: LS.get('myScripts', {}), dscope: LS.get('dscope', null), nstats: LS.get('nstats', {}), nitems: LS.get('nitems', {}), study: null, lastSummary: null });
+    scripts: LS.get('scripts', {}), myScripts: LS.get('myScripts', {}), dscope: LS.get('dscope', null), nstats: LS.get('nstats', {}), nitems: LS.get('nitems', {}), coach: null, study: null, lastSummary: null });
   initBoxes();
 }
 async function eraseData(all) {
@@ -1537,7 +2102,7 @@ async function eraseData(all) {
     for (const r of remote) if (all || diag.has(r.data.section)) { try { await db.collection('results').doc(r.id).delete(); } catch (e) {} }
     if (all) {
       for (const g of grindLogs) { try { await db.collection('grind').doc(g.id).delete(); } catch (e) {} }
-      for (const p of ['progress/words', 'progress/scripts', 'progress/grind', 'progress/names', 'scripts/mine']) { try { await db.doc(p).delete(); } catch (e) {} }
+      for (const p of ['progress/words', 'progress/scripts', 'progress/grind', 'progress/names', 'progress/coach', 'scripts/mine']) { try { await db.doc(p).delete(); } catch (e) {} }
     }
   }
   reloadState(); state.erasing = false; state.confirmErase = null; state.view = all ? 'home' : 'results'; render(); window.scrollTo({ top: 0 });
@@ -1557,6 +2122,7 @@ async function restoreErased() {
       if (Object.keys(state.scripts).length) { try { await db.doc('progress/scripts').set({ scripts: state.scripts, updatedAt: Date.now() }); } catch (e) {} }
       if (Object.keys(state.myScripts).length) { try { await db.doc('scripts/mine').set({ answers: state.myScripts, updatedAt: Date.now() }); } catch (e) {} }
       if (Object.keys(state.nstats || {}).length) { try { await db.doc('progress/names').set({ stats: state.nstats, items: state.nitems, updatedAt: Date.now() }); } catch (e) {} }
+      try { await db.doc('progress/coach').set({ coach: coachState(), updatedAt: Date.now() }); } catch (e) {}
       for (const g of A.grind || []) { try { await db.collection('grind').doc(g.id).set(g.data); } catch (e) {} }
     }
   }
@@ -1739,6 +2305,7 @@ function startSection(sec, opt = {}) {
 }
 function record(rec, advance = true) {
   const cur = state.run?.items?.[state.run.idx]; if (cur?.gtype && !rec.gtype) { rec.gtype = cur.gtype; rec.gskill = cur.gskill; rec.gl = cur.l; } if (cur?.nid != null && rec.nid == null) rec.nid = cur.nid;
+  coachObserve(rec, cur);
   if (rec.ms == null) rec.ms = Date.now() - (state.itemT0 || Date.now());
   if (rec.l == null && cur?.l != null) rec.l = cur.l;
   const r = state.run; r.recs.push(rec); if (advance) r.idx++;
@@ -1751,7 +2318,7 @@ async function finish() {
   const res = { rid: sec + '-' + Date.now(), section: sec, startedAt: r.startedAt, finishedAt: Date.now(), opt: r.opt || {}, summary, recs: r.recs };
   state.run = null; LS.del('run');
   state.lastSummary = res; state.view = 'done'; render();
-  if (sec === 'grind') await finishGrind(res); else if (sec === 'names') await finishNames(res); else await saveResult(res);
+  if (sec === 'grind') await finishGrind(res); else if (sec === 'names') await finishNames(res); else if (sec === 'coach') coachSave(); else await saveResult(res);
   if (sec === 'practice') await finishPractice(res);
   if (sec === 'vocab') await saveProgress(res.recs.map(x => [x.id, x.lvl]));
   if (sec === 'listening') {
@@ -1905,15 +2472,17 @@ function wirePlayer(el, lines, max, onPlayed, rateMul) {
   const upd = () => { dots.forEach((d, i) => d.classList.toggle('used', i < used)); btn.disabled = busy || used >= max; btn.textContent = busy ? 'Playing…' : used >= max ? 'No plays left' : used ? '▶ Play again' : '▶ Play'; };
   btn.onclick = () => {
     if (used >= max || busy) return;
-    used++; busy = true; upd(); wave.textContent = 'listening…';
-    TTS.play(lines, ok => { busy = false; wave.textContent = ok ? '' : 'Speech is not available in this browser.'; upd(); onPlayed && onPlayed(used); }, rateMul);
+    busy = true; upd(); wave.textContent = 'starting…';
+    let counted = false;
+    TTS.play(lines, ok => { busy = false; if (!TTS.ok) wave.textContent = 'Speech is not available in this browser.'; else if (!counted) wave.innerHTML = NO_SOUND(); else wave.textContent = ''; upd(); if (counted) onPlayed && onPlayed(used); }, rateMul,
+      () => { if (!counted) { counted = true; used++; wave.textContent = 'listening…'; upd(); } });
   };
   upd();
   return () => used;
 }
 function passItem(p, opt = {}) { const qi = p.qs.length > 5 ? pick(p.qs.map((_, i) => i), 5).sort((a, b) => a - b) : null; return { t: 'pass', id: p.id, l: p.l, qi, preview: !!opt.preview, notes: !!opt.notes }; }
 function renderPass(item, el) {
-  const P0 = PASSAGES.find(p => p.id === item.id), P = item.qi ? Object.assign({}, P0, { qs: item.qi.map(i => P0.qs[i]) }) : P0;
+  const P0 = item.gp || PASSAGES.find(p => p.id === item.id), P = item.qi ? Object.assign({}, P0, { qs: item.qi.map(i => P0.qs[i]) }) : P0;
   const qList = P.qs.map((q, i) => `<li>${esc(q[0])}</li>`).join('');
   el.innerHTML = `<div class="eyebrow">Listening · ${esc(P.kind)} · ${esc(P.level || (P.l ? 'Lesson ' + P.l : ''))}</div><h2 style="margin-top:4px">${esc(P.title || 'Passage')}</h2>
     <p class="hint">You can play it twice. When you’re ready, go to the questions. You can’t listen again after that.</p>
@@ -2011,6 +2580,7 @@ function renderSpeak(item, el) {
 const pct = (a, b) => b ? Math.round(100 * a / b) : 0;
 const SUMMARIZE = {
   names: recs => summarizeNames(recs),
+  coach: recs => summarizeCoach(recs),
   vocab(recs) {
     const by = {}; const lv = [0, 0, 0, 0];
     for (const r of recs) { by[r.l] = by[r.l] || [0, 0, 0, 0]; by[r.l][r.lvl]++; lv[r.lvl]++; }
@@ -2231,6 +2801,7 @@ function buildPractice(opt) {
     items.push(...main.map(g => Object.assign({ t: 'gram' }, g, g.mc ? { opts: trapOpts(g.mc, g.ans) } : {})));
   }
   if (mode === 'daily' || mode === 'listen') { const n = mode === 'listen' ? 6 : 2; const pool = curLesson() > 12 ? wpick(SENT.filter(x => x.ru.split(' ').length <= 10), n).map(x => x.ru) : pick(DICT2, n); for (const s of pool) items.push({ t: 'dict', s }); }
+  if (mode === 'daily' && coachRank().length) items.push(...buildCoach({ size: 4 }));
   if (mode === 'daily' || mode === 'speak') { const first = pickScript(); items.push({ t: 'script', i: first }); if (mode === 'speak') for (const i of pick(SCRIPTS.map((_, j) => j).filter(j => j !== first), 2)) items.push({ t: 'script', i }); }
   return items;
 }
@@ -2906,8 +3477,8 @@ const GB = {
     const tgt = pick(inBank(CATS[k]), 3), other = pick(keys.filter(x => x !== k).flatMap(x => inBank(CATS[x])), 4); if (tgt.length < 2) return GB.dict();
     const list = shuffle(tgt.concat(other)); return { kind: 'type', l: curLesson(), audio: [['A', list.join('... ')]], plays: 1, title: `Write the words that are ${k} (one play)`, cue: 'Type them in Russian, separated by spaces or commas.', ans: tgt, score: 'set', after: list.join(', '), multi: true }; },
   vform: () => { const v = one(VFORM); return { kind: 'mc', l: v.l, audio: [['A', v.s]], plays: 1, title: 'Which form did you hear? (one play)', opts: shuffle(v.mc), ans: v.k, after: v.s }; },
-  pass: () => { const p = one(PASSAGES); return { kind: 'pass', l: p.l, id: p.id, preview: Math.random() < 0.75 }; },
-  recall: () => { const p = one(PASSAGES); return { kind: 'recall', l: p.l, id: p.id }; },
+  pass: () => { if (Math.random() < .5) { const g = GP.make(); if (g) return { kind: 'pass', l: g.l, id: g.id, gp: g, preview: Math.random() < 0.75 }; } const p = one(PASSAGES); return { kind: 'pass', l: p.l, id: p.id, preview: Math.random() < 0.75 }; },
+  recall: () => { if (Math.random() < .5) { const g = GP.make(); if (g) return { kind: 'recall', l: g.l, id: g.id, gp: g }; } const p = one(PASSAGES); return { kind: 'recall', l: p.l, id: p.id }; },
   ear: () => { const w = weakWords(1)[0]; return { kind: 'mc', l: w.l, audio: [['A', w.ru]], plays: 2, title: 'What does this word mean?', opts: enOptsLike(w), ans: w.en, after: w.ru }; },
   rtext: () => { const t = one(TEXTS); return { kind: 'rtext', l: t.l, ti: TEXTS.indexOf(t) }; },
   qword: () => {
@@ -2943,7 +3514,7 @@ const GB = {
   shadow: () => { const s = one(SENT); return { kind: 'speak', l: s.l, sub: 'shadow', s: s.ru, en: s.en }; },
   oral: () => { const s = one(SENTE()); return { kind: 'speak', l: s.l, sub: 'oral', s: s.ru, en: s.en }; },
   sans: () => { const q = one(QA); return { kind: 'speak', l: q.l, sub: 'answer', q: q.q, s: q.a }; },
-  retell: () => { const p = one(PASSAGES); return { kind: 'retell', l: p.l, id: p.id }; },
+  retell: () => { if (Math.random() < .5) { const g = GP.make(); if (g) return { kind: 'retell', l: g.l, id: g.id, gp: g }; } const p = one(PASSAGES); return { kind: 'retell', l: p.l, id: p.id }; },
 };
 function gram2(topic, l) { const g = pick(GRAM2[topic], 1)[0]; return g.mc ? { kind: 'mc', l, title: GRAM2_NAMES[topic], prompt: esc(g.p).replace('___', '<span class="gap">&nbsp;</span>'), opts: trapOpts(g.mc, g.ans), ans: g.ans[0] } : { kind: 'type', l, title: GRAM2_NAMES[topic], prompt: esc(g.p), cue: g.cue, ans: g.ans, score: 'exact' }; }
 
@@ -2974,7 +3545,7 @@ function selfRate(el, onRate, labels = ['Right (tiny slip at most)', 'Partly rig
   return `<h3>How close were you?</h3><div class="opts">${labels.map((t, i) => `<button class="opt" data-sr="${[1, .5, 0][i]}">${t}</button>`).join('')}</div>`;
 }
 function wireSelfRate(el, fn) { el.querySelectorAll('[data-sr]').forEach(b => b.onclick = () => { el.querySelectorAll('[data-sr]').forEach(x => x.disabled = true); b.classList.add('right'); fn(+b.dataset.sr); }); }
-function headG(item) { const N = NTYPES[item.gtype]; if (N) return `<div class="eyebrow">Names & Numbers · ${esc(NSEG[N.seg])} · ${esc(N.name)}</div>`; const T = GTYPES[item.gtype]; return `<div class="eyebrow">${esc(GSKILLS[T.skill])} · ${esc(T.name)}${item.l ? ' · L' + item.l : ''}</div><p class="src">From your homework: “${esc(T.src)}”</p>`; }
+function headG(item) { if (/^c:/.test(item.gtype || '')) return `<div class="eyebrow">Coach · ${esc(CODES[item.ccode]?.name || '')}${item.recheck ? ' · quick check' : item.step != null ? ` · step ${item.step + 1} of 4: ${LADDER[item.step].toLowerCase()}` : ''}</div>`; const N = NTYPES[item.gtype]; if (N) return `<div class="eyebrow">Names & Numbers · ${esc(NSEG[N.seg])} · ${esc(N.name)}</div>`; const T = GTYPES[item.gtype]; return `<div class="eyebrow">${esc(GSKILLS[T.skill])} · ${esc(T.name)}${item.l ? ' · L' + item.l : ''}</div><p class="src">From your homework: “${esc(T.src)}”</p>`; }
 
 function renderG(item, el) {
   const k = item.kind;
@@ -3050,10 +3621,10 @@ function renderG(item, el) {
         <div class="actions">${hearBtn(item.s, '▶ Hear the model')}</div>${selfRate(el, null, ['Said it right', 'Close, some mistakes', 'Couldn’t do it'])}</div>`;
       wireSay(el); wireSelfRate(el, sc => { record({ t: 'g', ok: sc >= .75, score: sc, label: item.s }); nextItem(); }); };
   } else if (k === 'pass') {
-    renderPass({ id: item.id, preview: item.preview, notes: true }, el);
+    renderPass({ id: item.id, gp: item.gp, preview: item.preview, notes: true }, el);
     el.insertAdjacentHTML('afterbegin', headG(item) + `<p class="pill ${item.preview ? '' : 'warn'}" style="margin:4px 0">${item.preview ? 'Questions shown first, like your class tests' : 'Reactive: you see the questions only after listening'}</p>`);
   } else if (k === 'recall' || k === 'retell') {
-    const P = PASSAGES.find(p => p.id === item.id), retell = k === 'retell';
+    const P = item.gp || PASSAGES.find(p => p.id === item.id), retell = k === 'retell';
     let step = 0;
     const names = P.names || ['A', 'B'];
     const script = () => `<div class="transcript">${P.lines.map(l => `<p>${P.kind === 'Dialogue' ? `<b>${esc(l[0] === 'A' ? names[0] : names[1])}:</b> ` : ''}${esc(l[1])}</p>`).join('')}</div><p class="small muted">${esc(P.en)}</p>`;
@@ -3432,7 +4003,7 @@ function wireHome(el) {
   $('#resume', el) && ($('#resume', el).onclick = () => { state.view = 'run'; render(); });
   $('#discard', el) && ($('#discard', el).onclick = () => { state.run = null; LS.del('run'); render(); });
   $('#rate', el).onchange = e => { TTS.rate = +e.target.value; LS.set('rate', TTS.rate); };
-  $('#test', el).onclick = () => TTS.play([['A', 'Здравствуйте! Это урок русского языка.']], () => {});
+  $('#test', el).onclick = () => TTS.play([['A', 'Здравствуйте! Это урок русского языка.']], ok => { if (!ok) toast('No sound came out. Turn off Silent mode and turn the volume up; on iPhone also check Settings → Accessibility → Spoken Content → Voices → Russian.'); });
 }
 function viewSetup() {
   if (state.setup === 'vocab') {
@@ -3582,6 +4153,8 @@ function render() {
   else if (state.view === 'done' && state.lastSummary?.section === 'names') { el.innerHTML = namesRecap(state.lastSummary); $('#nagain', el).onclick = () => startSection('names', state.lastSummary.opt); $('#nback', el).onclick = () => { state.view = 'names'; render(); }; }
   else if (state.view === 'names') { el.innerHTML = viewNames(); wireNames(el); }
   else if (state.view === 'guide') { el.innerHTML = viewGuide(); wireGuide(el); }
+  else if (state.view === 'coach') { el.innerHTML = viewCoach(); wireCoach(el); }
+  else if (state.view === 'done' && state.lastSummary?.section === 'coach') { el.innerHTML = coachRecap(state.lastSummary); $('#cagain', el).onclick = () => startSection('coach', state.lastSummary.opt); $('#cback', el).onclick = () => { state.view = 'coach'; render(); }; }
   else if (state.view === 'done' && state.lastSummary?.section === 'grind') { el.innerHTML = grindRecap(state.lastSummary); $('#again', el).onclick = () => startSection('grind', LS.get('gopt', { skills: Object.keys(GSKILLS), size: 8 })); $('#gh', el).onclick = () => { state.view = 'grind'; render(); }; $('#again', el).focus(); }
   else if (state.view === 'done') { el.innerHTML = viewDone(); $('#home', el).onclick = () => { state.view = state.lastSummary?.section === 'practice' ? 'practice' : 'home'; render(); }; $('#res', el).onclick = () => { state.view = 'results'; render(); }; }
   else if (state.view === 'study') { el.innerHTML = viewStudy(); wireStudy(el); }

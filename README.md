@@ -10,3 +10,5 @@ and Names & Numbers.
 - **Android:** open the link in Chrome → ⋮ → Install app.
 - Works offline after the first visit. Progress is saved on your own device only;
   use Results → Download backup to move it.
+- **Updates:** when a new version is posted, the app shows “A new version is ready — Update now”.
+  You can also use Start here → Check for updates / Hard refresh. Progress is never erased.
