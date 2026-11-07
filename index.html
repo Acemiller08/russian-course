@@ -160,6 +160,45 @@ details.report ul { padding-left: 1.1em; } details.report li { margin: 6px 0; }
 .lsel { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 2px 4px 2px 8px; }
 .lsel select { border: 0; padding: 2px 4px; max-width: 220px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* print report */
+.res-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.res-head h1 { margin-bottom: 8px; } .res-head .btn { margin-top: 20px; }
+#repwrap { position: fixed; inset: 0; z-index: 200; overflow: auto; background: #5b6170; padding: 0 12px 40px; -webkit-overflow-scrolling: touch; }
+body.rep-open { overflow: hidden; }
+.rep-bar { position: sticky; top: 0; z-index: 2; max-width: 820px; margin: 0 auto; background: var(--card); color: var(--text); border-bottom: 1px solid var(--line); padding: 12px 16px; border-radius: 0 0 6px 6px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; justify-content: space-between; }
+.rep-form { display: flex; flex-wrap: wrap; gap: 10px; } .rep-form label { display: flex; flex-direction: column; font-size: .8rem; font-weight: 700; color: var(--muted); gap: 3px; }
+.rep-form input, .rep-form select { font: inherit; font-size: 1rem; padding: 7px 9px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--text); min-width: 0; max-width: 260px; }
+.rep-acts { display: flex; gap: 8px; } .rep-tip { flex-basis: 100%; margin: 0; font-size: .8rem; color: var(--muted); }
+.rep-page { max-width: 820px; margin: 16px auto 0; background: #fff; color: #1d2230; padding: 40px 44px; border-radius: 4px; box-shadow: 0 8px 30px rgba(0,0,0,.25); font-size: 14px; line-height: 1.5; }
+.rep-page h1 { font-family: var(--display); color: #1c2f6b; font-size: 1.9rem; margin: 2px 0 2px; }
+.rep-page h2 { font-family: var(--display); color: #1c2f6b; font-size: 1.15rem; margin: 0 0 6px; padding-bottom: 4px; border-bottom: 1px solid #d9dde6; }
+.rep-page h3 { font-size: .95rem; color: #1c2f6b; margin: 14px 0 4px; }
+.rep-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-bottom: 14px; border-bottom: 3px solid #1c2f6b; margin-bottom: 18px; }
+.rep-eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: .72rem; font-weight: 700; color: #5d6476; }
+.rep-m { color: #5d6476; } .rep-note { color: #5d6476; font-size: .82rem; margin: 0 0 8px; }
+.rep-score { border: 3px solid; border-radius: 50%; width: 92px; height: 92px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.rep-score b { font-size: 1.6rem; line-height: 1; } .rep-score span { font-size: .72rem; color: #5d6476; }
+.rep-lead { font-size: 1.02rem; margin: 4px 0 4px; } .rep-ul { margin: 4px 0 0; padding-left: 20px; } .rep-ul li { margin: 4px 0; }
+.rep-sec { margin: 0 0 22px; break-inside: avoid; page-break-inside: avoid; }
+.rep-kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 0 0 22px; break-inside: avoid; }
+.rep-kpi { border: 1px solid #d9dde6; border-radius: 4px; padding: 8px 10px; } .rep-kpi b { display: block; font-size: 1.25rem; color: #1c2f6b; } .rep-kpi span { font-size: .74rem; color: #5d6476; }
+.rep-svg { display: block; max-width: 100%; height: auto; }
+.rep-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .78rem; margin-top: 6px; } .rep-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.rep-tbl { width: 100%; border-collapse: collapse; font-size: .8rem; } .rep-tbl th, .rep-tbl td { border: 1px solid #e3e6ee; padding: 4px 6px; text-align: center; } .rep-tbl th { background: #f3f5f9; color: #1c2f6b; }
+.rep-left td:first-child { text-align: left; } .rep-na { color: #b9bfcc; }
+.rep-foot { margin-top: 26px; padding-top: 8px; border-top: 1px solid #d9dde6; font-size: .74rem; color: #5d6476; }
+@media (max-width: 640px) { .rep-page { padding: 22px 16px; font-size: 13px; } .rep-kpis { grid-template-columns: repeat(2, 1fr); } .rep-head h1 { font-size: 1.45rem; } .rep-score { width: 72px; height: 72px; } .rep-score b { font-size: 1.25rem; } #repwrap { padding: 0 0 30px; } .rep-bar { border-radius: 0; } }
+@media print {
+  @page { margin: 12mm; }
+  body.rep-open > *:not(#repwrap) { display: none !important; }
+  body.rep-open { overflow: visible; background: #fff !important; }
+  #repwrap { position: static; overflow: visible; background: #fff; padding: 0; }
+  .rep-bar { display: none !important; }
+  .rep-page { box-shadow: none; margin: 0; padding: 0; max-width: none; font-size: 11.5pt; }
+  .rep-page, .rep-page * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rep-kpis { grid-template-columns: repeat(5, 1fr); }
+}
 </style>
 
 
@@ -172,7 +211,7 @@ details.report ul { padding-left: 1.1em; } details.report li { margin: 6px 0; }
   var deferred = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; var b = document.getElementById('installBtn'); if (b) b.hidden = false; });
   window.appInstall = function () { if (deferred) { deferred.prompt(); deferred = null; } };
-  window.APP_VERSION = '01351053';
+  window.APP_VERSION = 'f247f48c';
   // Hard refresh: drop the offline copy and load the newest version. Progress (saved separately on the device) is not touched.
   window.appHardRefresh = async function () {
     var b = document.getElementById('updBtn'); if (b) { b.disabled = true; b.textContent = 'Updating…'; }
@@ -1653,7 +1692,7 @@ const GUIDE_TABS = [
     ['Flashcards, Learn (recognize, pick, then type), Write (type it from the English), Forms (cases, plurals, verb forms), In context (fill the word into a sentence) and Match.', 'Use it before a vocabulary quiz, or right after a new lesson starts.']],
   ['names', 'Names & Numbers', 'Names, places and numbers from all the books', 'Places (cities, regions and states, countries, landmarks), people (nicknames, patronymics, surnames, famous people) and numbers (from 0 to a billion, cases, dates, years, time, prices, phone numbers).',
     ['Pick Places, People or Numbers, then one drill or a mixed round.', 'Mixed rounds give more time to the drills and items you miss.']],
-  ['results', 'Results', 'See how you’re doing', 'Your overall Diagnostic scores, weakest part first, and a table by lesson: tap any cell to retest just that lesson and part.',
+  ['results', 'Results', 'See how you’re doing', 'Your overall Diagnostic scores, weakest part first, and a table by lesson: tap any cell to retest just that lesson and part. <b>Print report</b> (top right) makes a printable progress summary with charts that you can save as a PDF.',
     ['Copy a text summary to share with an instructor or study partner.', 'At the bottom: back up your progress (standalone version) and Start over.']],
 ];
 function viewGuide() {
@@ -4086,12 +4125,139 @@ function missedList(r) {
   if (!miss.length) return '';
   return `<h3>Missed items</h3><div class="tbl"><table><tr><th>Sentence</th><th>You wrote</th><th>Correct</th></tr>${miss.map(m => `<tr><td>${esc(m.p || m.label || '')} <span class="muted small">${esc(m.cue || '')}</span></td><td class="ru">${esc(m.typed || '—')}</td><td class="ru">${esc(m.ans)}</td></tr>`).join('')}</table></div>`;
 }
+/* ============================== PRINT REPORT ============================== */
+const REP_C = { good: '#2f7d4f', warn: '#b7791f', bad: '#b42318', ink: '#1c2f6b', muted: '#5d6476', line: '#d9dde6', series: ['#2a4d9b', '#c2410c', '#15803d', '#7e22ce', '#0e7490', '#a16207'] };
+const repCol = v => v >= 80 ? REP_C.good : v >= 60 ? REP_C.warn : REP_C.bad;
+const repPct = (a, b) => b ? Math.round(100 * a / b) : 0;
+function repHBars(rows, { max = 100, unit = '%', w = 680 } = {}) { // rows: [{label, v, sub?, color?}]
+  if (!rows.length) return '';
+  const lw = Math.min(300, Math.max(120, 14 + 6.6 * Math.max(...rows.map(r => Math.min(r.label.length, 44))))), bw = w - lw - 78, rh = 24, h = rows.length * rh + 6;
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" class="rep-svg">${rows.map((r, i) => { const y = i * rh + 4, len = Math.max(1, bw * Math.min(r.v, max) / max);
+    return `<text x="${lw - 8}" y="${y + 13}" text-anchor="end" font-size="12" fill="#1d2230">${esc(r.label.length > 44 ? r.label.slice(0, 43) + '…' : r.label)}</text>
+      <rect x="${lw}" y="${y}" width="${bw}" height="16" fill="#eef1f6" rx="2"/><rect x="${lw}" y="${y}" width="${len}" height="16" fill="${r.color || repCol(r.v)}" rx="2"/>
+      <text x="${lw + bw + 8}" y="${y + 13}" font-size="12" font-weight="700" fill="#1d2230">${r.v}${unit}${r.sub ? `<tspan font-weight="400" fill="${REP_C.muted}"> ${esc(r.sub)}</tspan>` : ''}</text>`; }).join('')}</svg>`;
+}
+function repColumns(rows, { w = 680, h = 190 } = {}) { // rows: [{label, v}]
+  if (!rows.length) return '';
+  const pl = 34, pb = 26, pt = 10, cw = (w - pl - 8) / rows.length, ih = h - pb - pt;
+  const grid = [0, 50, 80, 100].map(g => { const y = pt + ih * (1 - g / 100); return `<line x1="${pl}" x2="${w - 4}" y1="${y}" y2="${y}" stroke="${g === 0 ? '#9aa1b3' : REP_C.line}" stroke-dasharray="${g === 0 ? '' : '3 3'}"/><text x="${pl - 6}" y="${y + 4}" text-anchor="end" font-size="10" fill="${REP_C.muted}">${g}%</text>`; }).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" class="rep-svg">${grid}${rows.map((r, i) => { const bh = ih * r.v / 100, x = pl + i * cw + cw * 0.18, bw = cw * 0.64;
+    return `<rect x="${x}" y="${pt + ih - bh}" width="${bw}" height="${Math.max(bh, 1)}" fill="${repCol(r.v)}" rx="2"/>${cw > 22 ? `<text x="${x + bw / 2}" y="${pt + ih - bh - 4}" text-anchor="middle" font-size="10" fill="#1d2230">${r.v}</text>` : ''}
+      <text x="${x + bw / 2}" y="${h - 9}" text-anchor="middle" font-size="10.5" fill="#1d2230">${esc(r.label)}</text>`; }).join('')}</svg>`;
+}
+function repStack(segs, { w = 680 } = {}) { // segs: [{label, n, color}]
+  const tot = segs.reduce((s, x) => s + x.n, 0); if (!tot) return ''; let x = 0;
+  const bars = segs.map(s => { const sw = (w - 2) * s.n / tot, r = `<rect x="${x}" y="0" width="${sw}" height="26" fill="${s.color}"/>${sw > 34 ? `<text x="${x + sw / 2}" y="17" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">${repPct(s.n, tot)}%</text>` : ''}`; x += sw; return r; }).join('');
+  return `<svg viewBox="0 0 ${w} 30" width="100%" class="rep-svg">${bars}</svg><div class="rep-legend">${segs.map(s => `<span><i style="background:${s.color}"></i>${esc(s.label)}: ${s.n}</span>`).join('')}</div>`;
+}
+function repTimeline(runs, { w = 680, h = 200 } = {}) { // runs: [{k, t, v}] oldest first
+  const keys = [...new Set(runs.map(r => r.k))]; if (runs.length < 2) return '';
+  const pl = 34, pr = 10, pt = 10, pb = 28, iw = w - pl - pr, ih = h - pt - pb, X = i => pl + (runs.length === 1 ? iw / 2 : iw * i / (runs.length - 1)), Y = v => pt + ih * (1 - v / 100);
+  const grid = [0, 50, 80, 100].map(g => `<line x1="${pl}" x2="${w - pr}" y1="${Y(g)}" y2="${Y(g)}" stroke="${g ? REP_C.line : '#9aa1b3'}" stroke-dasharray="${g ? '3 3' : ''}"/><text x="${pl - 6}" y="${Y(g) + 4}" text-anchor="end" font-size="10" fill="${REP_C.muted}">${g}%</text>`).join('');
+  const lines = keys.map((k, ki) => { const c = REP_C.series[ki % 6], pts = runs.map((r, i) => [r, i]).filter(([r]) => r.k === k);
+    return `${pts.length > 1 ? `<polyline fill="none" stroke="${c}" stroke-width="2" points="${pts.map(([r, i]) => X(i) + ',' + Y(r.v)).join(' ')}"/>` : ''}${pts.map(([r, i]) => `<circle cx="${X(i)}" cy="${Y(r.v)}" r="4" fill="${c}" stroke="#fff" stroke-width="1.5"/>`).join('')}`; }).join('');
+  const dates = [...new Set(runs.map(r => new Date(r.t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })))];
+  const lab = dates.length === 1 ? `<text x="${pl + iw / 2}" y="${h - 8}" text-anchor="middle" font-size="10.5" fill="${REP_C.muted}">All runs on ${dates[0]} (in the order taken)</text>`
+    : runs.map((r, i) => (i === 0 || new Date(r.t).toDateString() !== new Date(runs[i - 1].t).toDateString()) ? `<text x="${X(i)}" y="${h - 8}" text-anchor="middle" font-size="10" fill="${REP_C.muted}">${new Date(r.t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</text>` : '').join('');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" class="rep-svg">${grid}${lines}${lab}</svg><div class="rep-legend">${keys.map((k, ki) => `<span><i style="background:${REP_C.series[ki % 6]}"></i>${esc(SECTIONS[k].title)}</span>`).join('')}</div>`;
+}
+function reportModel(L) {
+  coachSeed();
+  const R = reportData(), P = Object.fromEntries(DIAG_KEYS().map(k => [k, pooled(k)])), done = DIAG_KEYS().filter(k => P[k]);
+  const parts = done.map(k => ({ k, name: SECTIONS[k].title, v: P[k].summary.score, runs: P[k].runs, time: P[k].summary.time }));
+  const avg = parts.length ? Math.round(parts.reduce((s, x) => s + x.v, 0) / parts.length) : null;
+  const topics = [];
+  for (const k of done) { const s = P[k].summary; if (s.byTopic) for (const [t, [ok, n]] of Object.entries(s.byTopic)) if (n >= 2) topics.push({ k, label: t, v: repPct(ok, n), sub: `${ok}/${n}` }); }
+  if (P.speaking?.summary.byKind) for (const [t, [ok, n]] of Object.entries(P.speaking.summary.byKind)) if (n >= 2) topics.push({ k: 'speaking', label: 'Speaking · ' + ({ read: 'reading aloud', ask: 'asking questions', retell: 'retelling' }[t] || t), v: repPct(ok, n), sub: `${ok}/${n}` });
+  const lis = P.listening?.summary; if (lis) { lis.dictation?.words && topics.push({ k: 'listening', label: 'Listening · dictation', v: lis.dictation.pct, sub: `${lis.dictation.correct}/${lis.dictation.words} words` }); lis.ear?.n && topics.push({ k: 'listening', label: 'Listening · hearing words', v: lis.ear.pct, sub: `${lis.ear.ok}/${lis.ear.n}` }); lis.passages?.length && topics.push({ k: 'listening', label: 'Listening · passages', v: lis.passScore, sub: `${lis.passages.length} passages` }); }
+  const weakTopics = topics.filter(t => t.v < 60).sort((a, b) => a.v - b.v), strongTopics = topics.filter(t => t.v >= 80).sort((a, b) => b.v - a.v);
+  const G = lessonGrid(), lessons = Object.keys(G).map(Number).filter(l => l > 0 && l <= L).sort((a, b) => a - b).map(l => { const t = Object.values(G[l]).reduce((a, x) => [a[0] + x[0], a[1] + x[1]], [0, 0]); return { l, v: repPct(t[0], t[1]), n: t[1] }; }).filter(x => x.n >= 3);
+  const runs = state.results.filter(r => DIAG_KEYS().includes(r.section) && r.recs?.length).map(r => { let v = null; try { v = SUMMARIZE[r.section](r.recs).score; } catch (e) {} return { k: r.section, t: r.finishedAt || 0, v }; }).filter(r => typeof r.v === 'number').sort((a, b) => a.t - b.t);
+  const vs = P.vocab?.summary, weakWords = (vs?.weak || []).map(id => WORD[id]).filter(Boolean);
+  const prog = wordsUpTo().map(w => state.progress[w.id]).filter(p => p?.n), totalWords = BANK.filter(w => w.l <= L).length;
+  const vocabByLesson = vs?.byLesson ? Object.entries(vs.byLesson).map(([l, a]) => ({ l: +l, v: repPct(a[1] * 1 / 3 + a[2] * 2 / 3 + a[3], a.reduce((s, x) => s + x, 0)) })).filter(x => x.l <= L).sort((a, b) => a.l - b.l) : [];
+  const errs = [];
+  if (P.cases?.summary.errors) for (const [t, n] of Object.entries(P.cases.summary.errors)) if (t !== 'blank') errs.push({ label: 'Cases · ' + t, n });
+  if (P.translate?.summary.tags) for (const [t, n] of Object.entries(P.translate.summary.tags)) errs.push({ label: 'Translation · ' + t.toLowerCase(), n });
+  if (P.speaking?.summary.flags) for (const [t, n] of Object.entries(P.speaking.summary.flags)) errs.push({ label: 'Speaking · ' + t.charAt(0).toLowerCase() + t.slice(1), n });
+  errs.sort((a, b) => b.n - a.n);
+  const slow = parts.filter(p => p.time).map(p => ({ label: p.name, v: p.time.median, sub: `avg ${p.time.avg} s` })).sort((a, b) => b.v - a.v);
+  return { L, R, parts, avg, topics, weakTopics, strongTopics, lessons, runs, vs, weakWords, prog, totalWords, vocabByLesson, errs, slow, missing: DIAG_KEYS().filter(k => !P[k]).map(k => SECTIONS[k].title), coach: coachRank().slice(0, 6), mastered: coachMastered() };
+}
+function reportHTML(name, L) {
+  const M = reportModel(L), who = esc(name.trim() || 'This student'), today = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  const list = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+  let head;
+  if (M.avg == null) head = `As of Lesson ${L}, ${who} has not finished a Diagnostic part yet, so there is no score to report. Take at least one part of the Diagnostic and print this report again.`;
+  else {
+    const lvl = M.avg >= 80 ? 'on track and performing strongly' : M.avg >= 65 ? 'making solid progress, with a few clear gaps' : M.avg >= 50 ? 'building a foundation, but has clear gaps to close' : 'struggling right now and needs focused review';
+    const strong = M.parts.filter(p => p.v >= 75).sort((a, b) => b.v - a.v), weak = M.parts.filter(p => p.v < 60).sort((a, b) => a.v - b.v);
+    head = `As of Lesson ${L}, ${who} is ${lvl}, averaging <b>${M.avg}%</b> across ${M.parts.length} of the ${DIAG_KEYS().length} Diagnostic parts.`
+      + (strong.length ? ` Strongest in ${list(strong.map(p => `${esc(p.name)} (${p.v}%)`))}.` : '')
+      + (weak.length ? ` Struggling most with ${list(weak.map(p => `<b>${esc(p.name)}</b> (${p.v}%)`))}.` : ' No part is below 60%.');
+  }
+  const where = [];
+  if (M.weakTopics.length) where.push(`<b>Weakest topics:</b> ${M.weakTopics.slice(0, 5).map(t => `${esc(t.label)} (${t.v}%, ${t.sub})`).join('; ')}.`);
+  if (M.errs.length) where.push(`<b>Most frequent mistakes:</b> ${M.errs.slice(0, 4).map(e => `${esc(e.label)} (${e.n}×)`).join('; ')}.`);
+  if (M.coach.length) where.push(`<b>Mistake patterns the Coach is working on:</b> ${M.coach.slice(0, 4).map(x => esc(CODES[x.c].name)).join('; ')}.`);
+  if (M.R.words && M.R.words.rec - M.R.words.spell >= 20) where.push(`<b>Recognizing vs. spelling:</b> recognizes ${M.R.words.rec}% of tested words but spells only ${M.R.words.spell}%. Reading is ahead of writing.`);
+  if (M.weakWords.length) where.push(`<b>Words still missed:</b> ${M.weakWords.slice(0, 12).map(w => `${esc(w.ru)} <span class="rep-m">(${esc(w.en.split(/[;(]/)[0].trim())})</span>`).join(', ')}.`);
+  const lowL = M.lessons.filter(x => x.v < 70).sort((a, b) => a.v - b.v);
+  if (lowL.length) where.push(`<b>Lessons to revisit:</b> ${lowL.slice(0, 4).map(x => `Lesson ${x.l}${COURSE_TITLES[x.l] ? ` (${esc(COURSE_TITLES[x.l])})` : ''} at ${x.v}%`).join(', ')}.`);
+  if (M.R.speed && M.R.speed.pct >= 25) where.push(`<b>Speed:</b> ${M.R.speed.pct}% of correct answers were slow, so they aren’t automatic yet${M.R.speed.slowest ? `; slowest in ${esc(M.R.speed.slowest.name)} (median ${M.R.speed.slowest.s} s)` : ''}.`);
+  if (M.missing.length) where.push(`<b>Not tested yet:</b> ${esc(M.missing.join(', '))}.`);
+  const kpi = (n, l) => `<div class="rep-kpi"><b>${n}</b><span>${l}</span></div>`;
+  const sec = (t, body, note = '') => body ? `<section class="rep-sec"><h2>${t}</h2>${note ? `<p class="rep-note">${note}</p>` : ''}${body}</section>` : '';
+  const G = lessonGrid(), gl = Object.keys(G).map(Number).filter(l => l <= L).sort((a, b) => a - b);
+  const heat = gl.length ? `<table class="rep-tbl"><tr><th>Lesson</th>${DIAG_KEYS().map(k => `<th>${esc(SECTIONS[k].title)}</th>`).join('')}</tr>${gl.map(l => `<tr><th>${l ? 'L' + l : 'Core 1–12'}</th>${DIAG_KEYS().map(k => { const c = G[l][k]; if (!c) return '<td class="rep-na">—</td>'; const p = repPct(c[0], c[1]); return `<td style="background:${repCol(p)}1f;color:${repCol(p)};font-weight:700">${p}%</td>`; }).join('')}</tr>`).join('')}</table>` : '';
+  const lv = M.vs?.levels;
+  return `<div class="rep-page">
+    <header class="rep-head"><div><div class="rep-eyebrow">Russian Basic Course · Progress report</div><h1>${who}</h1><div class="rep-m">As of Lesson ${L}${COURSE_TITLES[L] ? ` · ${esc(COURSE_TITLES[L])}` : ''} · ${today}</div></div>
+      ${M.avg != null ? `<div class="rep-score" style="border-color:${repCol(M.avg)};color:${repCol(M.avg)}"><b>${M.avg}%</b><span>overall</span></div>` : ''}</header>
+    <section class="rep-sec"><h2>Summary</h2><p class="rep-lead">${head}</p>${where.length ? `<h3>Where exactly ${who === 'This student' ? 'the student is' : who + ' is'} struggling</h3><ul class="rep-ul">${where.map(x => `<li>${x}</li>`).join('')}</ul>` : ''}</section>
+    <div class="rep-kpis">${kpi(M.parts.length + '/' + DIAG_KEYS().length, 'Diagnostic parts taken')}${kpi(M.runs.length, 'Diagnostic runs')}${kpi(M.prog.length + '/' + M.totalWords, `words tested (L1–${L})`)}${kpi(M.prog.filter(p => p.best === 3).length, 'words spelled correctly')}${kpi(M.mastered.length, 'problems mastered')}</div>
+    ${sec('Score by part', repHBars(M.parts.slice().sort((a, b) => a.v - b.v).map(p => ({ label: p.name, v: p.v, sub: `${p.runs} run${p.runs > 1 ? 's' : ''}` }))), 'Pooled from every run; for each lesson only the newest attempt counts. Green 80%+, amber 60–79%, red under 60%.')}
+    ${sec('Score by lesson', repColumns(M.lessons.map(x => ({ label: 'L' + x.l, v: x.v }))), 'All Diagnostic parts combined for each lesson.')}
+    ${sec('Lesson × part', heat)}
+    ${sec('Progress over time', repTimeline(M.runs), 'Each dot is one Diagnostic run.')}
+    ${sec('Topics, weakest first', repHBars(M.topics.slice().sort((a, b) => a.v - b.v).slice(0, 14)), 'Grammar, case and skill topics with at least two questions.')}
+    ${sec('Vocabulary knowledge', lv ? repStack([{ label: 'Spelled correctly', n: lv[3], color: REP_C.good }, { label: 'Almost spelled', n: lv[2], color: '#7fb38f' }, { label: 'Recognized only', n: lv[1], color: REP_C.warn }, { label: 'Didn’t know', n: lv[0], color: REP_C.bad }]) + (M.vocabByLesson.length > 1 ? `<h3>Vocabulary score by lesson</h3>${repColumns(M.vocabByLesson.map(x => ({ label: 'L' + x.l, v: x.v })))}` : '') : '', M.vs ? `${M.vs.n} words tested in the Diagnostic.` : '')}
+    ${sec('Most frequent mistakes', repHBars(M.errs.slice(0, 10).map(e => ({ label: e.label, v: e.n, color: REP_C.bad })), { max: Math.max(...M.errs.map(e => e.n), 1), unit: '×' }))}
+    ${sec('Coach: mistake patterns', M.coach.length ? `<table class="rep-tbl rep-left"><tr><th>Pattern</th><th>Recent misses</th><th>Ladder step</th></tr>${M.coach.map(x => `<tr><td>${esc(CODES[x.c].name)}</td><td>${Math.round(x.miss)}</td><td>${x.lvl + 1} of 4</td></tr>`).join('')}</table>${M.mastered.length ? `<p class="rep-note">Mastered: ${M.mastered.map(x => esc(CODES[x.c].name)).join('; ')}.</p>` : ''}` : '')}
+    ${sec('Answer speed', repHBars(M.slow.map(s => ({ label: s.label, v: s.v, sub: s.sub, color: REP_C.ink })), { max: Math.max(...M.slow.map(s => s.v), 1), unit: ' s' }), 'Median seconds per question, slowest first.')}
+    ${sec('Plan for the week', M.R.plan.length ? `<ul class="rep-ul">${M.R.plan.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '')}
+    <footer class="rep-foot">Generated by the DLI Russian Basic Course practice site from results saved on this device.</footer></div>`;
+}
+function openReport() {
+  const nm = LS.get('repName', ''), L = curLesson();
+  let w = document.getElementById('repwrap'); if (w) w.remove();
+  w = document.createElement('div'); w.id = 'repwrap'; w.setAttribute('role', 'dialog'); w.setAttribute('aria-label', 'Print report');
+  w.innerHTML = `<div class="rep-bar"><div class="rep-form"><label>Name <input id="repName" type="text" value="${esc(nm)}" placeholder="Student name" autocomplete="name"></label>
+      <label>As of <select id="repL">${lessonOptions(L)}</select></label></div>
+      <div class="rep-acts"><button class="btn" id="repPrint">Print / Save as PDF</button><button class="btn ghost" id="repClose">Close</button></div>
+      <p class="rep-tip">In the print window, choose <b>Save as PDF</b> as the printer. On iPhone: tap Print, then the Share button in the preview and <b>Save to Files</b>.</p></div>
+    <div id="repBody"></div>`;
+  document.body.appendChild(w); document.body.classList.add('rep-open');
+  const draw = () => { $('#repBody', w).innerHTML = reportHTML($('#repName', w).value, +$('#repL', w).value); };
+  draw();
+  $('#repName', w).oninput = () => { LS.set('repName', $('#repName', w).value); draw(); };
+  $('#repL', w).onchange = draw;
+  const close = () => { w.remove(); document.body.classList.remove('rep-open'); };
+  $('#repClose', w).onclick = close;
+  w.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  $('#repPrint', w).onclick = () => { const t = document.title, n = $('#repName', w).value.trim();
+    document.title = `Russian progress report${n ? ' - ' + n : ''} - Lesson ${$('#repL', w).value}`;
+    const back = () => { document.title = t; window.removeEventListener('afterprint', back); }; window.addEventListener('afterprint', back);
+    try { window.print(); } catch (e) { toast('Printing is blocked here. Open the site in your browser and try again.'); } setTimeout(back, 60000); };
+  if (!nm) $('#repName', w).focus();
+}
+
 function viewResults() {
   const P = Object.fromEntries(DIAG_KEYS().map(k => [k, pooled(k)])), done = DIAG_KEYS().filter(k => P[k]);
   if (!done.length) return `<h1>Results</h1><div class="sheet"><p>No results yet. Finish any part and its results show up here, broken down by lesson, topic and skill.</p><button class="btn" id="home">Go to the sections</button></div>${backupHTML()}`;
   const ranked = done.map(k => [k, P[k].summary.score]).sort((a, b) => a[1] - b[1]);
   const prog = wordsUpTo().map(w => state.progress[w.id]).filter(p => p?.n); const words = prog.length, solid = prog.filter(p => p.best === 3).length;
-  return `<h1>Results</h1>
+  return `<div class="res-head"><h1>Results</h1><button class="btn ghost" id="printRep" title="A printable summary with charts, ready to save as a PDF">Print report</button></div>
     <p class="small muted">Everything here is pooled from all your runs. For each lesson, your newest attempt counts and older ones drop out, so retesting a lesson updates its numbers without touching the others.</p>
     <div class="card"><div class="eyebrow">Weakest first</div><div class="bars" style="margin-top:6px">${ranked.map(([k, s]) => `<div class="bar"><span class="lab">${esc(SECTIONS[k].title)}</span><span class="track"><i class="${s >= 80 ? 's3' : s >= 60 ? 's1' : 's0'}" style="width:${s}%"></i></span><span class="num">${s}%</span></div>`).join('')}</div>
     <p class="small muted" style="margin-bottom:0">Words tested so far: ${words} of ${wordsUpTo().length} (Lessons 1–${curLesson()}). Spelled correctly at least once: ${solid}. Missing parts: ${DIAG_KEYS().filter(k => !P[k]).map(k => SECTIONS[k].title).join(', ') || 'none'}.</p></div>
@@ -4134,6 +4300,7 @@ function wireBackup(el) {
 function wireResults(el) {
   wireBackup(el);
   wireGrid(el);
+  $('#printRep', el) && ($('#printRep', el).onclick = openReport);
   $('#home', el) && ($('#home', el).onclick = () => { state.view = 'home'; render(); });
   $('#copy', el) && ($('#copy', el).onclick = () => { const t = textSummary(); const ta = $('#sumtxt', el); ta.value = t; ta.hidden = false;
     navigator.clipboard?.writeText(t).then(() => toast('Copied'), () => { ta.select(); toast('Select the text and copy it'); }); });
