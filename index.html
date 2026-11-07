@@ -172,7 +172,7 @@ details.report ul { padding-left: 1.1em; } details.report li { margin: 6px 0; }
   var deferred = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; var b = document.getElementById('installBtn'); if (b) b.hidden = false; });
   window.appInstall = function () { if (deferred) { deferred.prompt(); deferred = null; } };
-  window.APP_VERSION = '6d8694f6';
+  window.APP_VERSION = 'ffade160';
   // Hard refresh: drop the offline copy and load the newest version. Progress (saved separately on the device) is not touched.
   window.appHardRefresh = async function () {
     var b = document.getElementById('updBtn'); if (b) { b.disabled = true; b.textContent = 'Updating…'; }
@@ -1407,20 +1407,23 @@ function fakeForms(right) {
 }
 function atLevel(it, lvl, code) {
   if (!it) return it;
+  if (!['mc', 'type', 'cd'].includes(it.kind)) return Object.assign(it, { step: null });   // tiles, speaking etc. keep their own format
+  if (it.kind === 'cd' && !it.prompt) { it.prompt = esc(it.p || '') + (it.cue ? ` <span class="hint">${esc(it.cue)}</span>` : ''); it.title = it.title || it.topic || ''; it.ans = [].concat(it.ans); }
+  const conv = x => Object.assign(x, x.t === 'cd' && x.kind !== 'cd' ? { t: 'g' } : {});   // a converted decide-first item must use the normal screen
   const right = Array.isArray(it.ans) ? it.ans[0] : it.ans, ru = isRu(right);
   if (!ru) return Object.assign(it, { step: null });              // English-answer items keep their own format
   if (lvl === 0) {
     if (it.kind === 'mc') return Object.assign(it, { step: 0 });
     const opts = fakeForms(right).slice(0, 3); if (opts.length < 2) return Object.assign(it, { step: 1 });
-    return Object.assign(it, { kind: 'mc', opts: shuffle([right, ...opts]), ans: right, score: undefined, step: 0, title: 'Pick the right one · ' + (it.title || '') });
+    return conv(Object.assign(it, { kind: 'mc', opts: shuffle([right, ...opts]), ans: right, score: undefined, step: 0, title: 'Pick the right one · ' + (it.title || '') }));
   }
   if (lvl === 2 && it.wid && WORD[it.wid]) {
     const c = (contextsFor(WORD[it.wid]) || [])[0];
-    if (c && c.ru && c.form) { const re = new RegExp(c.form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); if (re.test(c.ru)) return Object.assign(it, { kind: 'type', opts: undefined, audio: undefined, step: 2, title: 'Use it in a sentence', prompt: esc(c.ru.replace(re, '___')) + ` <span class="hint">(${esc(WORD[it.wid].en)})</span>`, ans: [c.form], score: 'exact', after: c.ru }); }
+    if (c && c.ru && c.form) { const re = new RegExp(c.form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); if (re.test(c.ru)) return conv(Object.assign(it, { kind: 'type', opts: undefined, audio: undefined, step: 2, title: 'Use it in a sentence', prompt: esc(c.ru.replace(re, '___')) + ` <span class="hint">(${esc(WORD[it.wid].en)})</span>`, ans: [c.form], score: 'exact', after: c.ru })); }
   }
   if (lvl === 3) {
     const txt = plainPrompt(it.prompt), full = /___/.test(txt) ? txt.replace('___', right) : right;
-    return Object.assign(it, { kind: 'type', opts: undefined, audio: [['A', full]], plays: 2, step: 3, title: /___/.test(txt) ? 'Listen, then type the missing part' : 'Listen and write what you hear', prompt: /___/.test(txt) ? esc(txt) : '', ans: [right].concat(Array.isArray(it.ans) ? it.ans.slice(1) : []), score: 'exact', after: full });
+    return conv(Object.assign(it, { kind: 'type', opts: undefined, audio: [['A', full]], plays: 2, step: 3, title: /___/.test(txt) ? 'Listen, then type the missing part' : 'Listen and write what you hear', prompt: /___/.test(txt) ? esc(txt) : '', ans: [right].concat(Array.isArray(it.ans) ? it.ans.slice(1) : []), score: 'exact', after: full }));
   }
   if (it.kind === 'mc') { const hint = it.opts.length <= 4 && code !== 'spell7' && code !== 'softsign' && code !== 'spell5' ? ` <span class="hint">(${esc(it.opts.join(' / '))})</span>` : ''; return Object.assign(it, { kind: 'type', prompt: (it.prompt || '') + hint, ans: [right], opts: undefined, score: 'exact', step: lvl }); }
   return Object.assign(it, { step: lvl });
@@ -2891,10 +2894,10 @@ function renderCD(item, el) {
     const go = () => {
       const typed = inp.value.trim();
       if (typed && hasLatin(typed)) { $('#warn', el).innerHTML = latinWarn(typed); return; }
-      const ok = !!typed && item.ans.some(a => norm(a) === norm(typed));
-      record({ t: 'cd', topic: item.topic, p: item.p, cue: item.cue, typed, ans: item.ans[0], ok, qok, err: ok ? undefined : errKind(typed, item.ans[0]) });
+      const ANS = [].concat(item.ans), ok = !!typed && ANS.some(a => norm(a) === norm(typed));
+      record({ t: 'cd', topic: item.topic, p: item.p, cue: item.cue, typed, ans: ANS[0], ok, qok, err: ok ? undefined : errKind(typed, ANS[0]) });
       inp.disabled = true; $('.actions', $('#stage', el)).hidden = true;
-      $('#fb', el).innerHTML = (ok ? `<div class="fb good">Correct: <span class="ru">${esc(item.ans[0])}</span></div>` : `<div class="fb bad">Answer (your mistakes marked): <span class="ru">${typed ? diffMark(norm(typed), item.ans[0]) : esc(item.ans[0])}</span></div>`)
+      $('#fb', el).innerHTML = (ok ? `<div class="fb good">Correct: <span class="ru">${esc(ANS[0])}</span></div>` : `<div class="fb bad">Answer (your mistakes marked): <span class="ru">${typed ? diffMark(norm(typed), ANS[0]) : esc(ANS[0])}</span></div>`)
         + `<div class="actions"><button class="btn" id="next">Next</button></div>`;
       $('#next', el).onclick = nextItem; $('#next', el).focus();
     };
