@@ -253,7 +253,7 @@ body.rep-open { overflow: hidden; }
   var deferred = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; var b = document.getElementById('installBtn'); if (b) b.hidden = false; });
   window.appInstall = function () { if (deferred) { deferred.prompt(); deferred = null; } };
-  window.APP_VERSION = '664a4867';
+  window.APP_VERSION = '8e3f3677'; window.APP_BUILT = 'Nov 18, 2026 15:29 UTC';
   // Hard refresh: drop the offline copy and load the newest version. Progress (saved separately on the device) is not touched.
   window.appHardRefresh = async function () {
     var b = document.getElementById('updBtn'); if (b) { b.disabled = true; b.textContent = 'Updating…'; }
@@ -265,7 +265,12 @@ body.rep-open { overflow: hidden; }
     if (!/^https?:/.test(location.protocol)) { if (!quiet) alertBar('Updates work on the hosted app link.'); return; }
     try {
       var r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); var v = (await r.json()).v;
-      if (v && v !== window.APP_VERSION) showUpdateBar(); else if (!quiet) alertBar('You have the newest version.');
+      if (v && v !== window.APP_VERSION) {
+        // Apply updates automatically once per new version (progress lives in localStorage, so nothing is lost); fall back to the bar if that didn't take.
+        var tried = ''; try { tried = sessionStorage.getItem('ru12:autoupd') || ''; } catch (e) {}
+        if (quiet && tried !== v) { try { sessionStorage.setItem('ru12:autoupd', v); } catch (e) {} bar('<span><b>Updating to the newest version…</b> Your progress stays.</span>'); setTimeout(appHardRefresh, 600); }
+        else showUpdateBar();
+      } else if (!quiet) alertBar('You have the newest version (' + window.APP_VERSION + ', ' + window.APP_BUILT + ').');
     } catch (e) { if (!quiet) alertBar('Couldn’t check: no connection.'); }
   };
   function bar(html) { var d = document.getElementById('updbar') || document.createElement('div'); d.id = 'updbar'; d.innerHTML = html; if (!d.parentNode) document.body.appendChild(d); return d; }
@@ -274,7 +279,7 @@ body.rep-open { overflow: hidden; }
   window.addEventListener('load', function () { setTimeout(function () { appCheckUpdate(true); }, 1500); });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') appCheckUpdate(true); });
 })();
-</script><style>#updbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;display:flex;gap:10px;align-items:center;justify-content:space-between;background:#1c2f6b;color:#fff;padding:12px 14px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);font:14px/1.35 system-ui,sans-serif}#updbar button{flex:none;border:0;border-radius:6px;padding:8px 12px;font:600 14px system-ui,sans-serif;background:#fff;color:#1c2f6b;cursor:pointer}</style></head><body><header class="top"><div class="topin">
+</script><div id="verstamp" style="text-align:center;font:12px system-ui,sans-serif;opacity:.55;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px))">Version 8e3f3677 · updated Nov 18, 2026 · <a href="#" onclick="appCheckUpdate();return false">check for updates</a></div></template><script>addEventListener("DOMContentLoaded",function(){var t=document.getElementById("verstampT");if(t)document.body.appendChild(t.content.cloneNode(true));});</script><style>#updbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;display:flex;gap:10px;align-items:center;justify-content:space-between;background:#1c2f6b;color:#fff;padding:12px 14px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);font:14px/1.35 system-ui,sans-serif}#updbar button{flex:none;border:0;border-radius:6px;padding:8px 12px;font:600 14px system-ui,sans-serif;background:#fff;color:#1c2f6b;cursor:pointer}</style></head><body><header class="top"><div class="topin">
   <div class="brand" id="brand" role="button" tabindex="0">Курс русского · Уроки 1–41</div>
   <nav id="nav">
     <button class="navb" data-view="guide">Start here</button>
