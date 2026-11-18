@@ -178,7 +178,7 @@ h2.grl { margin-top: 26px; } h2.grl .muted { font-weight: 400; font-size: .85em;
 .gf-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin: 10px 0 6px; }
 .gf-card { text-align: left; border: 1px solid var(--line); border-radius: 6px; background: var(--card); padding: 12px 14px; cursor: pointer; font: inherit; color: var(--text); display: flex; flex-direction: column; gap: 3px; }
 .gf-card:hover { border-color: var(--ink); } .gf-card b { color: var(--ink); } .gf-card span { font-size: .85rem; color: var(--muted); }
-.gf-card.hub { border: 2px solid var(--ink); }
+.gf-card.hub { border: 2px solid var(--ink); } .gf-card .gf-from { font-size: .72rem; font-weight: 700; color: var(--ink); opacity: .7; margin-top: 2px; }
 .gf-tabs { margin: 6px 0 18px; }
 .gf-trail { display: flex; flex-direction: column; align-items: stretch; }
 .gf-step { text-align: left; font: inherit; color: var(--text); border: 1px dashed var(--line); border-radius: 6px; background: var(--paper); padding: 8px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
@@ -253,7 +253,7 @@ body.rep-open { overflow: hidden; }
   var deferred = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; var b = document.getElementById('installBtn'); if (b) b.hidden = false; });
   window.appInstall = function () { if (deferred) { deferred.prompt(); deferred = null; } };
-  window.APP_VERSION = 'f7f02877';
+  window.APP_VERSION = '664a4867';
   // Hard refresh: drop the offline copy and load the newest version. Progress (saved separately on the device) is not touched.
   window.appHardRefresh = async function () {
     var b = document.getElementById('updBtn'); if (b) { b.disabled = true; b.textContent = 'Updating…'; }
@@ -2462,6 +2462,282 @@ pron: { title: 'Pronoun forms', l: 7, blurb: 'он / его / у него / о �
  items: [['Я хорошо знаю ___.', '(он)', 'RACC', 'его'], ['У ___ есть сестра.', '(он)', 'RU', 'него'], ['Мы часто говорим ___.', '(о + она)', 'RPREP', 'о ней'], ['Это ___ машина.', '(his)', 'RPOSS', 'его'], ['Ты видишь ___?', '(я)', 'RACC', 'меня'], ['У ___ нет времени.', '(они)', 'RU', 'них'], ['Мы думаем ___.', '(о + они)', 'RPREP', 'о них']] },
 };
 
+/* ---------- Decision charts, Lessons 14–40: new branches on existing charts + new charts ---------- */
+const gfLeafOf = (t, b, ex, dont, rule, extra = {}) => Object.assign({ leaf: 1, t, b, ex: ex || [], dont: dont || [], rule }, extra);
+(() => {
+  const L = gfLeafOf;
+  // ----- Which case? : Genitive, Dative, Instrumental branches
+  const C = GF.case.nodes;
+  C.c0.o.push(['It’s the owner: “whose?” (the brother’s car)', 'машина брата', 'GENPOS', 16], ['Something is absent: нет / не было / не будет', 'У меня нет брата.', 'GENNEG', 18],
+    ['After a quantity word: много, мало, стакан, килограмм, сколько', 'много воды, стакан чаю', 'GENQ', 17], ['After a number', 'два брата, пять книг', '@numnoun', 18],
+    ['It’s the receiver: to / for whom? (give, call, write, help, show)', 'Я звоню маме.', 'DAT', 22], ['It’s the person in мне нравится / мне нужно / мне холодно / мне 20 лет', 'Брату нравится музыка.', 'DATIMP', 21],
+    ['It says “as”, “with what tool”, or follows заниматься / интересоваться / стать / быть (past)', 'Он стал врачом. Пишу ручкой.', 'INS', 23]);
+  C.c1.o.push(['к or по', 'к врачу, по городу', 'DATPR', 22], ['с meaning “with” (together)', 'с другом, кофе с молоком', 'INSWITH', 23], ['над, под, перед, за, между, рядом с (location)', 'под столом, перед домом', 'INSPLACE', 24]);
+  Object.assign(C, {
+    GENPOS: L('Genitive: whose?', 'The owner goes <b>after</b> the thing, in the Genitive: машина <b>брата</b>, дом <b>отца</b>, книга <b>сестры</b>.', ['Это кабинет <b>директора</b>.'], ['The thing owned stays in whatever case the sentence needs.'], 'gen16', { next: [['Get the Genitive ending', 'genend']] }),
+    GENNEG: L('Genitive: absence', '<b>нет / не было / не будет</b> + Genitive. The verb is always neuter singular: не было, не будет.', ['У меня нет <b>машины</b>.', 'Вчера <b>Ивана</b> не было.'], ['Never “не был брата”: it’s не было брата.'], 'net18', { next: [['Get the Genitive ending', 'genend']] }),
+    GENQ: L('Genitive: quantity', 'много, мало, немного, сколько, несколько, стакан, бутылка, килограмм + Genitive. Uncountable → singular (много <b>воды</b>); countable → plural (много <b>книг</b>).', ['Купи бутылку <b>молока</b>.', 'У него много <b>друзей</b>.'], ['Some masculine nouns take -у: стакан чаю.'], 'part17', { next: [['Get the Genitive ending', 'genend']] }),
+    DAT: L('Dative: the receiver', 'to / for whom: давать, дарить, звонить, писать, помогать, показывать, говорить, отвечать <b>кому</b>.', ['Я звоню <b>маме</b>.', 'Помоги <b>брату</b>.'], ['звонить takes Dative, not Accusative: звоню маме.'], 'dat22', { next: [['Get the Dative ending', 'datend']] }),
+    DATIMP: L('Dative: the person who feels / needs / likes', 'In impersonal sentences the person is Dative: <b>Мне</b> нравится, <b>брату</b> нужно, <b>ей</b> холодно, <b>мне</b> двадцать лет.', ['<b>Брату</b> нравится эта музыка.', '<b>Нам</b> нужно идти.'], ['The thing liked is the subject: Мне нравятся эти книги (plural verb).'], 'imp26', { next: [['Get the Dative ending', 'datend']] }),
+    DATPR: L('Dative after к and по', '<b>к</b> = toward / to someone’s place (к врачу). <b>по</b> = along, around, by means of, on the subject of (по улице, по телефону, экзамен по истории).', ['Я иду <b>к врачу</b>.', 'Мы гуляли <b>по парку</b>.'], ['ко before мне: ко мне.'], 'pok22', { next: [['Get the Dative ending', 'datend']] }),
+    INS: L('Instrumental: as, by means of', 'After заниматься, интересоваться, стать, быть (past / future), работать (as), and for the tool: <b>спортом</b>, <b>врачом</b>, <b>ручкой</b>.', ['Он занимается <b>спортом</b>.', 'Она хочет стать <b>врачом</b>.'], ['Present “is” has no verb, so Nominative: Он врач. Past: Он был врачом.'], 'ins23', { next: [['Get the Instrumental ending', 'insend']] }),
+    INSWITH: L('Instrumental after с (with)', '<b>с</b> + Instrumental = together with: с другом, со мной, кофе с молоком. “My friend and I” = мы с другом.', ['Я говорил <b>с братом</b>.'], ['с meaning “from / off” takes Genitive: с работы.'], 'with23', { next: [['Get the Instrumental ending', 'insend']] }),
+    INSPLACE: L('Instrumental after place prepositions', 'над (above), под (under), перед (in front of), за (behind), между (between), рядом с (next to) + Instrumental for location.', ['Кошка под <b>столом</b>.', 'Банк рядом с <b>почтой</b>.'], ['With motion (куда?) под and за take Accusative: положи под стол.'], 'locins24', { next: [['Get the Instrumental ending', 'insend'], ['Prepositions of place', 'place']] }),
+  });
+  GF.case.items.push(['Это машина ___.', '(брат)', 'GENPOS', 'брата'], ['У меня нет ___.', '(сестра)', 'GENNEG', 'сестры'], ['Я звоню ___.', '(мама)', 'DAT', 'маме'], ['Он занимается ___.', '(спорт)', 'INS', 'спортом'],
+    ['Я иду к ___.', '(врач)', 'DATPR', 'врачу'], ['Я говорил с ___.', '(друг)', 'INSWITH', 'другом'], ['Купи бутылку ___.', '(вода)', 'GENQ', 'воды'], ['___ нравится музыка.', '(брат)', 'DATIMP', 'Брату'], ['Кошка под ___.', '(стол)', 'INSPLACE', 'столом']);
+
+  // ----- Aspect: future, infinitive, imperative
+  const A = GF.aspect; A.title = 'Which aspect?'; A.blurb = 'читал / прочитал, буду читать / прочитаю, читай / прочитай'; A.start = 's00';
+  Object.assign(A.nodes, {
+    s00: { q: 'Which verb form do you need?', o: [['Past tense', 'читал or прочитал', 's0'], ['Future', 'буду читать or прочитаю', 'sF', 14], ['Infinitive (after another verb)', 'Я хочу ___ / начал ___', 'sI', 17], ['Command (imperative)', 'Читай! / Прочитай!', 'sM', 17]] },
+    sF: { q: 'What are you saying about the future action?', o: [['One action that will be finished, with a result', 'I’ll write the letter (and be done).', 'FPF'], ['Process, duration, or repeated', 'I’ll be working all evening; I’ll call every day.', 'FIM']] },
+    sI: { q: 'What comes before the infinitive?', o: [['начинать, продолжать, кончать, перестать, любить, нравиться, уметь, учиться', 'Я начал читать.', 'IIM'], ['A single specific result is meant', 'Мне надо купить хлеб. Я хочу посмотреть этот фильм.', 'IPF'], ['A repeated or general activity is meant', 'Надо каждый день гулять. Я люблю смотреть фильмы.', 'IIM']] },
+    sM: { q: 'What kind of command?', o: [['A single specific request', 'Купи хлеб! Позвони мне завтра.', 'MPF'], ['With не (don’t)', 'Не покупай! Не звони!', 'MNE'], ['General advice, a repeated action, or “go ahead, start”', 'Звони каждый день. Садитесь! Читайте!', 'MIM']] },
+    FPF: L('Perfective future: conjugate the perfective verb', 'напишу, прочитаешь, сделает, купим. No буду.', ['Завтра я <b>напишу</b> письмо.'], ['Never “буду написать”.'], 'asp14'),
+    FIM: L('Imperfective future: буду + imperfective infinitive', 'буду, будешь, будет, будем, будете, будут + читать / работать / писать.', ['Вечером я <b>буду работать</b>.', 'Я <b>буду звонить</b> тебе каждый день.'], ['буду + perfective is never possible.'], 'asp14'),
+    IIM: L('Imperfective infinitive', 'After начинать / продолжать / кончать / любить / нравиться / уметь, and for repeated or general activity.', ['Я начал <b>читать</b> книгу.', 'Он любит <b>смотреть</b> фильмы.'], [], 'asp17'),
+    IPF: L('Perfective infinitive', 'One specific result: надо купить, хочу посмотреть, можно позвонить.', ['Мне надо <b>купить</b> хлеб.'], ['нельзя + impf = not allowed; нельзя + perf = impossible.'], 'asp17'),
+    MPF: L('Perfective imperative', 'One specific request: купи, позвони, напиши, скажите.', ['<b>Позвони</b> мне завтра.'], [], 'asp17'),
+    MNE: L('Не + imperfective imperative', 'Don’t…: не покупай, не звони, не говорите.', ['<b>Не покупай</b> это!'], ['Exception: a warning (“mind you don’t…”) can be perfective: Не опоздай!'], 'asp17'),
+    MIM: L('Imperfective imperative', 'General advice, repeated actions, polite invitations, “go ahead”: звони, садитесь, читайте, входите.', ['<b>Садитесь</b>, пожалуйста.', '<b>Звони</b> маме каждую неделю.'], [], 'asp17'),
+  });
+  A.items.push(['Завтра я ___ письмо.', '(писать / написать)', 'FPF', 'напишу', ['буду писать', 'напишу']], ['Вечером мы ___ телевизор.', '(смотреть / посмотреть)', 'FIM', 'будем смотреть', ['будем смотреть', 'посмотрим']],
+    ['Я начал ___ книгу.', '(читать / прочитать)', 'IIM', 'читать', ['читать', 'прочитать']], ['Мне надо ___ хлеб.', '(покупать / купить)', 'IPF', 'купить', ['покупать', 'купить']], ['Не ___ это!', '(покупать / купить)', 'MNE', 'покупай', ['покупай', 'купи']], ['___ мне завтра!', '(звонить / позвонить)', 'MPF', 'Позвони', ['Звони', 'Позвони']]);
+
+  // ----- Telling time: minutes (L37)
+  const T = GF.time; T.start = 't00'; T.blurb = 'час / часа / часов, половина третьего, без пяти три';
+  Object.assign(T.nodes, {
+    t00: { q: 'Is it exactly on the hour?', o: [['Yes, on the hour', '2:00, 5:00', 't0'], ['No, with minutes', '2:10, 2:30, 2:45', 'tm', 37]] },
+    tm: { q: 'How many minutes past?', o: [['1–29 (but not 15)', '2:10', 'MPAST'], ['15', '2:15', 'MQ'], ['30', '2:30', 'MHALF'], ['31–59 (to the next hour)', '2:45, 2:55', 'MTO']] },
+    MPAST: L('… минут + the NEXT hour (ordinal, Genitive)', '2:10 = десять минут <b>третьего</b> (ten minutes of the third hour). At: <b>в</b> десять минут третьего.', ['Сейчас пять минут <b>второго</b>. (1:05)'], ['Think “of the next hour”: 2:10 is in the third hour.'], 'time37'),
+    MQ: L('четверть + the next hour', '2:15 = <b>четверть третьего</b>. At: в четверть третьего.', [], [], 'time37'),
+    MHALF: L('половина + the next hour', '2:30 = <b>половина третьего</b> (or пол-третьего). At: <b>в половине</b> третьего.', [], ['Not “половина второго” for 2:30: that’s 1:30.'], 'time37'),
+    MTO: L('без + Genitive of the minutes + the next hour', '2:45 = <b>без четверти три</b>, 2:55 = <b>без пяти три</b>, 2:40 = без двадцати три. At: same, no в.', [], ['The hour is a cardinal here: без пяти три (not третьего).'], 'time37'),
+  });
+  T.items.push(['Сейчас половина ___. (2:30)', '', 'MHALF', 'третьего', ['второго', 'третьего']], ['Сейчас без пяти ___. (3:55)', '', 'MTO', 'четыре', ['три', 'четыре']], ['Сейчас десять минут ___. (1:10)', '', 'MPAST', 'второго', ['первого', 'второго']]);
+
+  // ----- Negatives: некого / негде / некогда (L39)
+  GF.neg.nodes.g0.o.push(['There’s nobody / nowhere / no time TO do something', 'I have nobody to ask; there’s nowhere to sit.', 'NEK', 39]);
+  GF.neg.nodes.NEK = L('не- words + infinitive: некого, негде, некогда, не с кем', 'Stressed <b>не́-</b> (no не before the verb) + infinitive, person in the Dative: <b>Мне некогда</b> отдыхать. <b>Ему не с кем</b> поговорить. <b>Негде</b> сесть.', [], ['Compare: Я никогда не отдыхаю (I never rest) vs. Мне некогда отдыхать (I have no time to rest).', 'With a preposition the word splits: не с кем, не о чем.'], 'neg39', { ans: 'некогда' });
+  GF.neg.items.push(['Мне ___ отдыхать.', '(I have no time to)', 'NEK', 'некогда', ['никогда', 'некогда']]);
+
+  // ----- Hub
+  GF.hub.nodes.h0.o.push(['When? (time expressions)', 'в среду, в мае, на неделе, через год, по субботам', '@when', 14], ['Prefixed verbs of motion', 'прийти, уйти, войти, выйти…', '@pmotion', 24], ['Carrying, leading, transporting', 'нести / вести / везти', '@carry', 32],
+    ['A number + noun', 'два брата, пять книг, двое детей', '@numnoun', 18], ['Putting and position', 'стоит / лежит / висит, поставить / положить', '@put', 19], ['Prepositions of place', 'у, около, под, над, рядом с…', '@place', 19],
+    ['From: из, с or от?', 'из школы, с работы, от брата', '@from', 18], ['свой or его?', '', '@svoj', 26], ['Comparatives', 'больше, интереснее, чем…', '@comp', 26], ['Long or short adjective', 'больной / болен', '@short', 30],
+    ['чтобы: infinitive or past?', '', '@chtoby', 33], ['-то or -нибудь', '', '@nibud', 33], ['Participles', 'читающий, прочитавший, написанный', '@part', 34], ['Verbal adverbs', 'читая / прочитав', '@vadv', 38],
+    ['If: если or если бы', '', '@cond', 40], ['Reported speech', 'что / ли / чтобы', '@ind', 40], ['Reflexive -ся or not?', 'начинает / начинается', '@sya', 16], ['который: which form?', '', '@kotory', 21]);
+  GF.hub.nodes.h1.o.splice(3, 0, ['Genitive', 'брата, книги, новых', '@genend', 16], ['Dative', 'брату, маме, новому', '@datend', 22], ['Instrumental', 'братом, мамой, новым', '@insend', 23]);
+})();
+
+Object.assign(GF, {
+genend: { title: 'Genitive ending', l: 16, blurb: 'брата, сестры, России, нового, моей, студентов, книг', start: 'g0', nodes: {
+  g0: { q: 'Singular or plural?', o: [['Singular', '', 'g1'], ['Plural', '', 'g4', 27]] },
+  g1: { q: 'What kind of word?', o: [['A noun', '', 'g2'], ['An adjective / possessive / этот', 'нового, моей', 'g3', 21], ['A pronoun', 'меня, его (у него)', 'GPRON']] },
+  g2: { q: 'How does the noun end?', o: [['Consonant (masc.) or -о (neut.)', 'брат, стол, окно', 'GA'], ['-й, -ь (masc.) or -е (neut.)', 'музей, учитель, море', 'GJA'], ['-а', 'сестра, книга, мама', 'GY'], ['-я, -ия, or feminine -ь', 'неделя, Россия, тетрадь, мать', 'GI']] },
+  g3: { q: 'Gender of the noun?', o: [['Masculine or neuter', '', 'GADJM'], ['Feminine', '', 'GADJF']] },
+  g4: { q: 'How does the singular end?', o: [['Hard consonant (masc.)', 'студент, стол', 'GPOV'], ['-й (masc.)', 'музей, трамвай', 'GPEV'], ['-ь (any), or ж, ш, ч, щ', 'словарь, площадь, врач, нож', 'GPEJ'], ['-а / -о (and many -я)', 'книга, сестра, слово, неделя', 'GPZERO'], ['It’s an adjective / possessive', 'новых, моих', 'GPADJ']] },
+  GA: gfLeafOf('+ -а', 'брат → брат<b>а</b>, стол → стол<b>а</b>, окно → окн<b>а</b>.', ['Нет <b>стола</b>.'], [], 'gen16'),
+  GJA: gfLeafOf('-я', 'музей → музе<b>я</b>, учитель → учител<b>я</b>, море → мор<b>я</b>.', [], [], 'gen16'),
+  GY: gfLeafOf('-а → -ы (or -и)', 'сестра → сестр<b>ы</b>, мама → мам<b>ы</b>. After к, г, х, ж, ш, ч, щ write <b>-и</b>: книга → книг<b>и</b>, Ольга → Ольг<b>и</b>.', [], ['7-letter rule!'], 'gen16'),
+  GI: gfLeafOf('-и', 'неделя → недел<b>и</b>, Россия → Росси<b>и</b>, тетрадь → тетрад<b>и</b>, мать → матер<b>и</b>, дочь → дочер<b>и</b>.', [], [], 'gen16'),
+  GPRON: gfLeafOf('Pronouns', 'меня, тебя, его, её, нас, вас, их. After a preposition: у <b>него</b>, у <b>неё</b>, у <b>них</b>.', [], ['его meaning “his” never takes н-: у его брата.'], 'u18'),
+  GADJM: gfLeafOf('-ого / -его', 'нового, большого, хорошего, синего, моего, нашего, этого (said “-ова”).', ['Это дом <b>моего</b> брата.'], [], 'genadj21'),
+  GADJF: gfLeafOf('-ой / -ей', 'новой, большой, хорошей, синей, моей, нашей, этой.', ['Это машина <b>моей</b> сестры.'], [], 'genadj21'),
+  GPOV: gfLeafOf('-ов', 'студент → студент<b>ов</b>, стол → стол<b>ов</b>, год → лет (irregular).', ['Пять <b>студентов</b>.'], ['After ц unstressed: -ев (месяцев).'], 'genpl27'),
+  GPEV: gfLeafOf('-ев', 'музей → музе<b>ев</b>, трамвай → трамва<b>ев</b>. Also -ья plurals: братья → брать<b>ев</b>.', [], [], 'genpl27'),
+  GPEJ: gfLeafOf('-ей', 'словарь → словар<b>ей</b>, площадь → площад<b>ей</b>, врач → врач<b>ей</b>, нож → нож<b>ей</b>. Also людей, детей, друзей.', [], [], 'genpl27'),
+  GPZERO: gfLeafOf('No ending (drop the vowel)', 'книга → книг, слово → слов, неделя → недель. If two consonants clash, add о / е: девушка → девуш<b>е</b>к, окно → ок<b>о</b>н, сестра → сест<b>ё</b>р.', ['Много <b>книг</b>.'], ['-ия / -ие → -ий: аудиторий, зданий.'], 'genpl27'),
+  GPADJ: gfLeafOf('-ых / -их', 'новых, больших, хороших, синих, моих, наших, этих.', [], [], 'genpladj27') },
+ items: [['Это машина ___.', '(отец)', 'GA', 'отца'], ['У меня нет ___.', '(сестра)', 'GY', 'сестры'], ['Он из ___.', '(Россия)', 'GI', 'России'], ['Это книга ___.', '(учитель)', 'GJA', 'учителя'], ['Нет ___.', '(книга)', 'GY', 'книги'],
+   ['В классе пять ___.', '(студент)', 'GPOV', 'студентов'], ['В городе много ___.', '(музей)', 'GPEV', 'музеев'], ['У него много ___.', '(книга)', 'GPZERO', 'книг'], ['Сколько ___?', '(врач)', 'GPEJ', 'врачей'], ['Это дом ___ брата.', '(мой)', 'GADJM', 'моего']] },
+
+datend: { title: 'Dative ending', l: 22, blurb: 'брату, маме, Марии, новому, моей, студентам', start: 'd0', nodes: {
+  d0: { q: 'Singular or plural?', o: [['Singular', '', 'd1'], ['Plural', '', 'DPL', 26]] },
+  d1: { q: 'What kind of word?', o: [['A noun', '', 'd2'], ['An adjective / possessive', '', 'd3'], ['A pronoun', '', 'DPRON']] },
+  d2: { q: 'How does the noun end?', o: [['Consonant / -о (hard)', 'брат, окно', 'DU'], ['-й, -ь (masc.) / -е', 'учитель, Андрей, море', 'DJU'], ['-а / -я', 'мама, неделя, папа', 'DE'], ['-ия or feminine -ь', 'Мария, тетрадь, мать', 'DI']] },
+  d3: { q: 'Gender of the noun?', o: [['Masculine or neuter', '', 'DADJM'], ['Feminine', '', 'DADJF']] },
+  DU: gfLeafOf('-у', 'брат → брат<b>у</b>, друг → друг<b>у</b>, окно → окн<b>у</b>.', ['Я звоню <b>брату</b>.'], [], 'dat22'),
+  DJU: gfLeafOf('-ю', 'учитель → учител<b>ю</b>, Андрей → Андре<b>ю</b>, море → мор<b>ю</b>.', [], [], 'dat22'),
+  DE: gfLeafOf('-е', 'мама → мам<b>е</b>, неделя → недел<b>е</b>, папа → пап<b>е</b> (masculine -а nouns too).', ['Я пишу <b>маме</b>.'], [], 'dat22'),
+  DI: gfLeafOf('-и', 'Мария → Мари<b>и</b>, тетрадь → тетрад<b>и</b>, мать → матер<b>и</b>, дочь → дочер<b>и</b>.', [], [], 'dat22'),
+  DPRON: gfLeafOf('Pronouns', 'мне, тебе, ему, ей, нам, вам, им. After к / по: к <b>нему</b>, к <b>ней</b>, к <b>ним</b>; ко мне.', [], [], 'dat22'),
+  DADJM: gfLeafOf('-ому / -ему', 'новому, большому, хорошему, синему, моему, нашему, этому.', ['Я помогаю <b>новому</b> студенту.'], [], 'datadj22'),
+  DADJF: gfLeafOf('-ой / -ей', 'новой, большой, хорошей, синей, моей, нашей, этой.', [], [], 'datadj22'),
+  DPL: gfLeafOf('Plural: -ам / -ям; adjectives -ым / -им', 'студентам, мамам, друзьям, людям, детям; новым, хорошим, моим, этим.', ['Я звоню <b>родителям</b>.'], ['Time: по субботам, по вечерам (по + Dative plural).'], 'datpl26') },
+ items: [['Я звоню ___.', '(брат)', 'DU', 'брату'], ['Он помогает ___.', '(мама)', 'DE', 'маме'], ['Я написал ___.', '(учитель)', 'DJU', 'учителю'], ['Подари цветы ___.', '(Мария)', 'DI', 'Марии'], ['Я позвоню ___ другу.', '(мой)', 'DADJM', 'моему'],
+   ['Помоги ___!', '(я)', 'DPRON', 'мне'], ['Мы звоним ___.', '(родители)', 'DPL', 'родителям'], ['Я дал книгу ___ сестре.', '(младший)', 'DADJF', 'младшей']] },
+
+insend: { title: 'Instrumental ending', l: 23, blurb: 'братом, учителем, мамой, матерью, новым, мной', start: 'i0', nodes: {
+  i0: { q: 'Singular or plural?', o: [['Singular', '', 'i1'], ['Plural', '', 'IPL', 29]] },
+  i1: { q: 'What kind of word?', o: [['A noun', '', 'i2'], ['An adjective / possessive', '', 'i3'], ['A pronoun', '', 'IPRON']] },
+  i2: { q: 'How does the noun end?', o: [['Consonant / -о', 'брат, стол, окно', 'IOM'], ['-й, -ь (masc.) / -е, or ж, ш, ч, щ, ц with unstressed ending', 'учитель, музей, море, товарищ', 'IEM'], ['-а / -я', 'мама, неделя, папа', 'IOJ'], ['Feminine -ь', 'тетрадь, мать, дочь', 'IJU']] },
+  i3: { q: 'Gender of the noun?', o: [['Masculine or neuter', '', 'IADJM'], ['Feminine', '', 'IADJF']] },
+  IOM: gfLeafOf('-ом', 'брат → брат<b>ом</b>, стол → стол<b>ом</b>, врач → врач<b>ом</b> (stressed), окно → окн<b>ом</b>.', ['Он стал <b>врачом</b>.'], [], 'ins23'),
+  IEM: gfLeafOf('-ем (-ём when stressed after a soft consonant)', 'учитель → учител<b>ем</b>, музей → музе<b>ем</b>, море → мор<b>ем</b>, товарищ → товарищ<b>ем</b>; but словарь → словар<b>ём</b>.', [], ['5-letter rule: after ж, ш, ч, щ, ц an unstressed о → е.'], 'ins23'),
+  IOJ: gfLeafOf('-ой / -ей', 'мама → мам<b>ой</b>, книга → книг<b>ой</b>, неделя → недел<b>ей</b>, Саша → Саш<b>ей</b> (5-letter rule).', ['Я горжусь <b>мамой</b>.'], [], 'ins23'),
+  IJU: gfLeafOf('-ью', 'тетрадь → тетрад<b>ью</b>, мать → матер<b>ью</b>, дочь → дочер<b>ью</b>.', [], [], 'ins23'),
+  IPRON: gfLeafOf('Pronouns', 'мной, тобой, им, ей, нами, вами, ими. After с: со <b>мной</b>, с <b>ним</b>, с <b>ней</b>, с <b>ними</b>.', [], [], 'with23'),
+  IADJM: gfLeafOf('-ым / -им', 'новым, большим, хорошим, синим, моим, нашим, этим.', ['Я говорил с <b>новым</b> студентом.'], [], 'ins23'),
+  IADJF: gfLeafOf('-ой / -ей', 'новой, большой, хорошей, синей, моей, нашей, этой.', [], [], 'ins23'),
+  IPL: gfLeafOf('Plural: -ами / -ями; adjectives -ыми / -ими', 'студентами, книгами, друзьями; irregular: людьми, детьми. новыми, хорошими, моими.', [], [], 'inspl29') },
+ items: [['Он занимается ___.', '(спорт)', 'IOM', 'спортом'], ['Она стала ___.', '(учительница)', 'IOJ', 'учительницей'], ['Я пишу ___.', '(ручка)', 'IOJ', 'ручкой'], ['Он работает ___.', '(учитель)', 'IEM', 'учителем'], ['Я горжусь ___.', '(мать)', 'IJU', 'матерью'],
+   ['Пойдём со ___!', '(я)', 'IPRON', 'мной'], ['Я говорил с ___ другом.', '(старый)', 'IADJM', 'старым'], ['Я живу с ___.', '(родители)', 'IPL', 'родителями']] },
+
+numnoun: { title: 'Number + noun', l: 18, blurb: 'один стол, два стола, пять столов, двое детей, мне 21 год', start: 'u0', nodes: {
+  u0: { q: 'What is the LAST word of the number?', hint: 'Only the last word matters: 21 = двадцать один → один; 34 → четыре; 11–14 count as 5+.', o: [['один / одна / одно (1, 21, 31…)', '', 'U1'], ['два / две, три, четыре (2–4, 22–24…)', '', 'u2'], ['5–20, or ending in 5–9 / 0, or 11–14', 'пять, десять, двенадцать, двадцать', 'U5'], ['It’s age: год, года or лет?', '', 'UAGE', 21], ['A group of people: двое, трое…', '', 'UCOLL', 37]] },
+  u2: { q: 'Is there an adjective too?', o: [['No, just the noun', 'два брата', 'U2'], ['Yes', 'два новых дома', 'U2ADJ', 35]] },
+  U1: gfLeafOf('1: agree, Nominative singular', 'один стол, одна книга, одно окно, двадцать один год.', [], ['один agrees in gender: одна неделя.'], 'num3'),
+  U2: gfLeafOf('2–4: Genitive singular', 'два стола, две книги, три брата, четыре окна, двадцать два года. два (masc. / neut.) / две (fem.).', ['У меня <b>две сестры</b>.'], ['Not plural: два брата, not два братья.'], 'gen234_18'),
+  U2ADJ: gfLeafOf('2–4 + adjective: adjective in the Genitive plural', 'два нов<b>ых</b> дома, три больш<b>их</b> окна. Feminine can be Nominative plural: две нов<b>ые</b> книги.', [], [], 'numadj35'),
+  U5: gfLeafOf('5+: Genitive plural', 'пять столов, десять книг, двенадцать братьев, двадцать пять лет. Adjectives too: пять новых домов.', ['Здесь <b>пять студентов</b>.'], ['11–14 always take Genitive plural: одиннадцать лет.'], 'genpl27'),
+  UAGE: gfLeafOf('Age: год / года / лет', 'Dative person + number + 1 → <b>год</b>, 2–4 → <b>года</b>, 5–20 → <b>лет</b>. Мне двадцать один <b>год</b>, ему тридцать три <b>года</b>, ей сорок <b>лет</b>.', [], ['лет for 11–14: мне двенадцать лет.'], 'age21'),
+  UCOLL: gfLeafOf('Collective numbers', 'двое, трое, четверо… + Genitive plural for groups of men, children, people, and plural-only nouns: двое детей, трое солдат, нас было пятеро.', [], ['Not for groups of women: две девушки.'], 'coll37') },
+ items: [['У меня два ___.', '(брат)', 'U2', 'брата'], ['Там пять ___.', '(комната)', 'U5', 'комнат'], ['Я купил ___ книгу.', '(1)', 'U1', 'одну'], ['Ему двадцать один ___.', '', 'UAGE', 'год', ['год', 'года', 'лет']], ['У нас двенадцать ___.', '(урок)', 'U5', 'уроков'], ['Ей тридцать три ___.', '', 'UAGE', 'года', ['год', 'года', 'лет']], ['Это стоит три ___.', '(рубль)', 'U2', 'рубля']] },
+
+when: { title: 'When? Time expressions', l: 14, blurb: 'в среду, в мае, на неделе, через час, два года назад, по субботам, первого мая', start: 'w0', nodes: {
+  w0: { q: 'What are you saying?', o: [['When something happens', '', 'w1'], ['How long it lasted', 'two hours, all day', 'WDUR'], ['How often', 'every day, on Saturdays', 'w2'], ['In (time from now) / ago', 'in a week, a year ago', 'WREL']] },
+  w1: { q: 'What unit of time?', o: [['A clock time or a day', 'в пять часов, в среду', 'WACC'], ['A month, year or century', 'в мае, в этом году', 'WPREP'], ['A week', 'на этой неделе', 'WWEEK'], ['A date (day of the month)', 'первого мая', 'WDATE', 21], ['A part of the day or a season', 'утром, вечером, летом, зимой', 'WINS']] },
+  w2: { q: 'Which way of saying it?', o: [['каждый …', 'каждый день, каждую субботу', 'WEACH'], ['по + plural', 'по субботам, по вечерам', 'WPO', 26]] },
+  WDUR: gfLeafOf('Duration: Accusative, no preposition', 'два часа, весь день, всю неделю, целый год. The verb is usually imperfective.', ['Я <b>весь день</b> работал.'], ['за + Accusative = how long it took to finish: Я прочитал книгу за два дня (perfective).'], 'ves14'),
+  WACC: gfLeafOf('в + Accusative', 'в пять часов, в среду, в субботу, во вторник.', [], [], 'texp14'),
+  WPREP: gfLeafOf('в + Prepositional', 'в мае, в январе, в этом году, в прошлом году, в двадцатом веке.', [], ['году / веку are special -у forms.'], 'texp14'),
+  WWEEK: gfLeafOf('на + Prepositional', 'на этой неделе, на прошлой неделе, на следующей неделе.', [], [], 'texp14'),
+  WDATE: gfLeafOf('Date: ordinal in the Genitive, no preposition', 'On May 1st = <b>первого мая</b>. What’s the date today = Сегодня <b>первое</b> мая (Nominative, neuter).', [], ['The month is always Genitive: мая, января.'], 'genadj21'),
+  WINS: gfLeafOf('Special words (Instrumental form)', 'утром, днём, вечером, ночью; весной, летом, осенью, зимой.', [], ['No preposition.'], 'texp14'),
+  WEACH: gfLeafOf('каждый + Accusative', 'каждый день, каждую неделю, каждое утро.', [], [], 'freq11'),
+  WPO: gfLeafOf('по + Dative plural', 'по субботам (on Saturdays), по вечерам (in the evenings), по выходным.', [], [], 'datpl26'),
+  WREL: gfLeafOf('через (in) / назад (ago)', 'через час (in an hour), через неделю; два года назад (two years ago).', ['Он приедет <b>через неделю</b>.'], ['через comes before, назад after.'], 'texp14') },
+ items: [['Мы приедем на ___ неделе.', '(этот)', 'WWEEK', 'этой'], ['Я родился в ___.', '(май)', 'WPREP', 'мае'], ['Я ___ день работал.', '(весь)', 'WDUR', 'весь'], ['По ___ я хожу в бассейн.', '(субботы)', 'WPO', 'субботам'], ['Он приедет ___ неделю.', '(in a week)', 'WREL', 'через', ['через', 'назад']], ['Я родился ___ мая.', '(1st)', 'WDATE', 'первого']] },
+
+pmotion: { title: 'Prefixed verbs of motion', l: 24, blurb: 'прийти, уйти, войти, выйти, подойти, перейти, пройти, зайти…', start: 'x0', nodes: {
+  x0: { q: 'Which direction?', o: [['Arrive, come', 'пришёл, приехал', 'XPRI'], ['Leave, go away', 'ушёл, уехал', 'XU'], ['Go in', 'вошёл, въехал', 'XV'], ['Go out', 'вышел, выехал', 'XVY'], ['Approach, come up to', 'подошёл', 'XPOD', 28], ['Move away from', 'отошёл', 'XOT', 28], ['Cross', 'перешёл улицу', 'XPERE'], ['Pass by / through / go a distance', 'прошёл мимо', 'XPRO', 28], ['Drop in / stop by', 'зашёл к другу', 'XZA', 28], ['Reach, get as far as', 'дошёл до', 'XDO', 28], ['Go around', 'обошёл', 'XOB', 33], ['Set off (one moment)', 'пошёл, поехал', 'XPO', 19]] },
+  ...Object.fromEntries([['XPRI', 'при-: arrive', 'приходить / прийти', 'приезжать / приехать', 'в / на + Acc. (where to), из / с + Gen. (from), к + Dat. (to a person)', 'Он <b>пришёл</b> домой в шесть.'],
+    ['XU', 'у-: leave (and be gone)', 'уходить / уйти', 'уезжать / уехать', 'из / с + Gen., от + Gen. (a person), в / на + Acc.', 'Он <b>ушёл</b> на работу.'],
+    ['XV', 'в-: go in', 'входить / войти', 'въезжать / въехать', 'в + Acc.', '<b>Входите</b>, пожалуйста!'], ['XVY', 'вы-: go out', 'выходить / выйти (выйду)', 'выезжать / выехать', 'из + Gen.', 'Она <b>вышла</b> из комнаты.'],
+    ['XPOD', 'под-: approach', 'подходить / подойти', 'подъезжать / подъехать', 'к + Dat.', 'Автобус <b>подошёл</b> к остановке.'], ['XOT', 'от-: move away (a short way)', 'отходить / отойти', 'отъезжать / отъехать', 'от + Gen.', 'Поезд <b>отошёл</b> от станции.'],
+    ['XPERE', 'пере-: cross; move house', 'переходить / перейти', 'переезжать / переехать', 'через + Acc. or Acc. alone', 'Мы <b>перешли</b> улицу.'], ['XPRO', 'про-: pass by / through, cover a distance', 'проходить / пройти', 'проезжать / проехать', 'мимо + Gen., через + Acc.', 'Мы <b>прошли</b> мимо банка.'],
+    ['XZA', 'за-: drop in on the way', 'заходить / зайти', 'заезжать / заехать', 'к + Dat. (person), в / на + Acc. (place), за + Instr. (to pick up)', 'Я <b>зайду</b> к тебе вечером.'], ['XDO', 'до-: reach', 'доходить / дойти', 'доезжать / доехать', 'до + Gen.', 'Мы <b>дошли</b> до реки.'],
+    ['XOB', 'об- (обо-): go around', 'обходить / обойти', 'объезжать / объехать', 'вокруг + Gen. or Acc. alone', 'Мы <b>обошли</b> озеро.'], ['XPO', 'по-: set off (perfective only)', 'пойти (пошёл, пойду)', 'поехать (поехал, поеду)', 'like идти / ехать', 'Он <b>пошёл</b> в магазин.']]
+    .map(([k, t, foot, veh, prep, ex]) => [k, gfLeafOf(t, `<table><tr><td>on foot</td><td><b>${foot}</b></td></tr><tr><td>by vehicle</td><td><b>${veh}</b></td></tr><tr><td>prepositions</td><td>${prep}</td></tr></table><p>The first verb of each pair (-ходить / -езжать) is <b>imperfective</b>: repeated, in progress, or a round trip. The second (-йти / -ехать) is <b>perfective</b>: one completed move.</p>`, [ex], ['Also -летать / -лететь, -плывать / -плыть, -бегать / -бежать: прилетел, уплыл, убежал.', 'Past of -йти: -шёл, -шла, -шли.'], k === 'XPO' ? 'po19' : 'pref28')])) },
+ items: [['Он ___ домой в шесть часов.', '(arrived, on foot)', 'XPRI', 'пришёл', ['пришёл', 'ушёл', 'вышел']], ['Она ___ из комнаты.', '(went out)', 'XVY', 'вышла', ['вошла', 'вышла', 'ушла']], ['Мы ___ улицу.', '(crossed)', 'XPERE', 'перешли', ['прошли', 'перешли']], ['Автобус ___ к остановке.', '(approached)', 'XPOD', 'подошёл', ['подошёл', 'отошёл']],
+   ['Мы ___ мимо банка.', '(walked past)', 'XPRO', 'прошли', ['прошли', 'перешли', 'пришли']], ['___, пожалуйста!', '(come in)', 'XV', 'Входите', ['Входите', 'Выходите', 'Уходите']], ['Я ___ к тебе вечером.', '(will drop in)', 'XZA', 'зайду', ['зайду', 'приду', 'дойду']]] },
+
+carry: { title: 'Carrying, leading, transporting', l: 32, blurb: 'нести / носить, вести / водить, везти / возить', start: 'k0', nodes: {
+  k0: { q: 'What is being moved, and how?', o: [['Something carried in your hands (on foot)', 'a bag, a box, a wounded man', 'k1'], ['A person or animal led on foot (or a vehicle you drive)', 'children to school; drive a car', 'k2'], ['Anything transported by vehicle', 'a truck carrying food', 'k3']] },
+  ...Object.fromEntries([['k1', 'нести', 'носить', 'K1'], ['k2', 'вести', 'водить', 'K2'], ['k3', 'везти', 'возить', 'K3']].map(([k, u, m, L2]) => [k, { q: `${u} or ${m}?`, o: [['One trip, in progress / at that moment', '', L2 + 'U'], ['Regular trips, there and back, or ability', '', L2 + 'M'], ['One completed trip with a direction (brought, took away)', 'принёс, отвёл, привёз', 'KPREF', 33]] }])),
+  K1U: gfLeafOf('нести (unidirectional)', 'несу, несёшь, несёт, несём, несёте, несут; past нёс, несла, несли.', ['Солдат <b>несёт</b> раненого.'], [], 'carry32'), K1M: gfLeafOf('носить (multidirectional)', 'ношу, носишь… носят; also “to wear”: Он носит очки.', ['Почтальон <b>носит</b> письма каждый день.'], [], 'carry32'),
+  K2U: gfLeafOf('вести (unidirectional)', 'веду, ведёшь… ведут; past вёл, вела, вели.', ['Командир <b>ведёт</b> солдат.'], [], 'carry32'), K2M: gfLeafOf('водить (multidirectional)', 'вожу, водишь… водят; водить машину = to drive.', ['Мама <b>водит</b> детей в школу.', 'Он хорошо <b>водит</b> машину.'], [], 'carry32'),
+  K3U: gfLeafOf('везти (unidirectional)', 'везу, везёшь… везут; past вёз, везла, везли.', ['Грузовик <b>везёт</b> продукты.'], [], 'carry32'), K3M: gfLeafOf('возить (multidirectional)', 'вожу, возишь… возят.', ['Он <b>возит</b> детей в школу на машине.'], [], 'carry32'),
+  KPREF: gfLeafOf('Prefix + нести / вести / везти', 'Prefixes work as with walking: <b>при</b>нести (bring), <b>у</b>нести (take away), <b>от</b>нести (take somewhere), <b>пере</b>везти (transport across), <b>вы</b>вести (lead out).', ['<b>Принеси</b> мне воды.', 'Раненых <b>отвезли</b> в госпиталь.'], ['Imperfective pairs use -носить / -водить / -возить: приносить, отводить, привозить.'], 'precarry33') },
+ items: [['Солдат ___ раненого.', '(carrying, now)', 'K1U', 'несёт', ['несёт', 'носит', 'везёт']], ['Грузовик ___ продукты.', '(transporting, now)', 'K3U', 'везёт', ['несёт', 'везёт', 'ведёт']], ['Каждый день мама ___ детей в школу.', '(on foot)', 'K2M', 'водит', ['ведёт', 'водит', 'возит']], ['___ мне воды, пожалуйста.', '(bring)', 'KPREF', 'Принеси', ['Принеси', 'Приведи', 'Привези']], ['Он хорошо ___ машину.', '', 'K2M', 'водит', ['ведёт', 'водит']]] },
+
+put: { title: 'Position and putting', l: 19, blurb: 'стоит / лежит / висит; ставить / класть / вешать', start: 'y0', nodes: {
+  y0: { q: 'Is it where something IS, or someone PUTTING it there?', o: [['Where it is (state)', 'The book is on the table.', 'y1'], ['Someone puts it somewhere (action)', 'Put the book on the table.', 'y2', 24]] },
+  y1: { q: 'How is it positioned?', o: [['Upright / standing', 'стол, шкаф, бутылка, машина', 'YST'], ['Lying flat', 'книга, ковёр, ручка, человек в кровати', 'YLE'], ['Hanging', 'картина, карта, часы на стене', 'YVI']] },
+  y2: { q: 'How will it be positioned?', o: [['Upright', '', 'YPST'], ['Flat', '', 'YPLO'], ['Hanging', '', 'YPVE']] },
+  YST: gfLeafOf('стоять', 'стоит, стоят (+ где: в / на + Prepositional).', ['Шкаф <b>стоит</b> в углу.'], [], 'pos19'), YLE: gfLeafOf('лежать', 'лежит, лежат.', ['Книга <b>лежит</b> на столе.'], [], 'pos19'), YVI: gfLeafOf('висеть', 'висит, висят.', ['Картина <b>висит</b> на стене.'], [], 'pos19'),
+  YPST: gfLeafOf('ставить / поставить', 'ставлю, ставишь; поставлю. + куда: в / на + Accusative.', ['<b>Поставь</b> вазу на стол.'], ['Location → Accusative now: на стол, not на столе.'], 'put24'),
+  YPLO: gfLeafOf('класть / положить', 'кладу, кладёшь; положу, положишь. + куда: в / на + Accusative.', ['<b>Положи</b> книгу на стол.'], ['Two different-looking verbs: класть (impf.) / положить (perf.).'], 'put24'),
+  YPVE: gfLeafOf('вешать / повесить', 'вешаю; повешу, повесишь. + куда: на + Accusative.', ['Он <b>повесил</b> картину на стену.'], [], 'put24') },
+ items: [['Картина ___ на стене.', '', 'YVI', 'висит', ['стоит', 'лежит', 'висит']], ['Книга ___ на столе.', '', 'YLE', 'лежит', ['стоит', 'лежит', 'висит']], ['___ книгу на стол!', '(put)', 'YPLO', 'Положи', ['Поставь', 'Положи', 'Повесь']], ['Я ___ бутылку на стол.', '(put, past)', 'YPST', 'поставил', ['поставил', 'положил']], ['Шкаф ___ в углу.', '', 'YST', 'стоит', ['стоит', 'лежит']]] },
+
+place: { title: 'Prepositions of place', l: 19, blurb: 'у, около, напротив, далеко от, рядом с, под, над, перед, за, между', start: 'z0', nodes: {
+  z0: { q: 'Where is it relative to the other thing?', o: [['Right by / at', 'у окна', 'ZU'], ['Near, close to', 'около дома', 'ZOK'], ['Across from', 'напротив банка', 'ZNA'], ['Far from / not far from', 'далеко от центра', 'ZOT'], ['Next to', 'рядом с почтой', 'ZINS', 24], ['Above, under, in front of, behind, between', 'над, под, перед, за, между', 'ZINS', 24]] },
+  ZU: gfLeafOf('у + Genitive', 'у окна, у двери (right by). With people у = at someone’s place: у врача.', [], [], 'prep19'), ZOK: gfLeafOf('около + Genitive', 'около дома, около станции.', [], [], 'prep19'), ZNA: gfLeafOf('напротив + Genitive', 'напротив банка, напротив школы.', [], [], 'prep19'), ZOT: gfLeafOf('(не)далеко от + Genitive', 'далеко от центра, недалеко от станции.', [], [], 'prep19'),
+  ZINS: gfLeafOf('+ Instrumental', 'рядом с почтой, над столом, под столом, перед домом, за домом, между банком и аптекой.', [], ['With motion (куда?) под / за take Accusative: поставь под стол.'], 'locins24') },
+ items: [['Аптека напротив ___.', '(банк)', 'ZNA', 'банка'], ['Стол стоит у ___.', '(окно)', 'ZU', 'окна'], ['Он живёт рядом с ___.', '(школа)', 'ZINS', 'школой'], ['Мы живём недалеко от ___.', '(центр)', 'ZOT', 'центра'], ['Кошка под ___.', '(стол)', 'ZINS', 'столом']] },
+
+from: { title: 'From: из, с or от?', l: 18, blurb: 'из школы, с работы, от брата', start: 'f0', nodes: {
+  f0: { q: 'Where are they coming from?', o: [['A place you go “в” (building, city, country)', 'в школу → из школы', 'FIZ'], ['A place you go “на” (event, open area, на-word)', 'на работу → с работы', 'FS'], ['A person', 'к брату → от брата', 'FOT']] },
+  FIZ: gfLeafOf('из + Genitive', 'из школы, из Москвы, из магазина.', [], ['Mirror of в: в школу → из школы.'], 'izs18'), FS: gfLeafOf('с + Genitive', 'с работы, с почты, с концерта, с улицы.', [], ['Mirror of на: на работу → с работы.'], 'izs18'), FOT: gfLeafOf('от + Genitive', 'от брата, от мамы, от врача.', ['Я получил письмо <b>от мамы</b>.'], ['Mirror of к: к брату → от брата.'], 'izs18') },
+ items: [['Он идёт ___ магазина.', '', 'FIZ', 'из', ['из', 'с', 'от']], ['Она пришла ___ работы.', '', 'FS', 'с', ['из', 'с', 'от']], ['Я получил письмо ___ мамы.', '', 'FOT', 'от', ['из', 'с', 'от']], ['Мы приехали ___ Москвы.', '', 'FIZ', 'из', ['из', 'с']], ['Он вернулся ___ концерта.', '', 'FS', 'с', ['из', 'с']]] },
+
+sya: { title: 'Reflexive -ся or not?', l: 16, blurb: 'начинает / начинается, встречает / встречается', start: 'q0', nodes: {
+  q0: { q: 'Does the verb have a direct object (someone / something it acts on)?', o: [['Yes', 'Преподаватель начинает урок.', 'QNO'], ['No: the subject does it to itself', 'Я умываюсь, одеваюсь.', 'QSELF'], ['No: the thing just happens / starts / ends', 'Урок начинается.', 'QHAP'], ['No: two people do it to each other', 'Мы встречаемся.', 'QRECIP', 39], ['It’s a verb that always has -ся', 'бояться, смеяться, нравиться, заниматься', 'QALW']] },
+  QNO: gfLeafOf('No -ся', 'The verb takes a direct object: начинать урок, встречать друга, одевать ребёнка.', [], [], 'refl16'), QSELF: gfLeafOf('-ся: action on oneself', 'умываться, одеваться, мыться.', ['Я <b>одеваюсь</b>.'], ['-ся after consonants, -сь after vowels: одеваюсь, одеваешься.'], 'refl16'),
+  QHAP: gfLeafOf('-ся: it happens by itself', 'начинаться, кончаться, открываться, закрываться.', ['Фильм <b>начинается</b> в семь.'], [], 'refl16'), QRECIP: gfLeafOf('-ся: each other', 'встречаться, видеться, знакомиться, целоваться.', ['Мы <b>встречаемся</b> каждую неделю.'], [], 'sya39'), QALW: gfLeafOf('Always -ся', 'бояться, смеяться, нравиться, заниматься, улыбаться, надеяться.', [], [], 'refl16') },
+ items: [['Урок ___ в девять.', '', 'QHAP', 'начинается', ['начинает', 'начинается']], ['Преподаватель ___ урок.', '', 'QNO', 'начинает', ['начинает', 'начинается']], ['Я ___ в семь часов.', '(умываться)', 'QSELF', 'умываюсь'], ['Магазин ___ в восемь.', '', 'QHAP', 'открывается', ['открывает', 'открывается']]] },
+
+kotory: { title: 'который: which form?', l: 21, blurb: 'который, которая, которую, в котором…', start: 'o0', nodes: {
+  o0: { q: 'Step 1 — gender and number: which noun does который refer to?', o: [['A masculine noun', 'друг, дом', 'o1'], ['A feminine noun', 'девушка, книга', 'o1'], ['A neuter noun', 'письмо, место', 'o1'], ['A plural noun', 'друзья, книги', 'o1']] },
+  o1: { q: 'Step 2 — case: what job does который do INSIDE its own clause?', hint: 'Ignore the main sentence. Rewrite the clause with the noun: “…, которую я люблю” = я люблю девушку → Accusative.', o: [['Subject of its clause', '…, который живёт в Москве', 'OK1'], ['Object of its clause', '…, которого / которую я знаю', 'OK2'], ['After a preposition in its clause', '…, в котором я живу; …, о которой мы говорили', 'OK3'], ['Owner (whose)', '…, у которого есть машина', 'OK4']] },
+  OK1: gfLeafOf('Nominative: который / которая / которое / которые', 'Это друг, <b>который</b> живёт в Москве. Это девушка, <b>которая</b> работает здесь.', [], ['Always a comma before который.'], 'kot21'),
+  OK2: gfLeafOf('Accusative', 'masc. thing: который; masc. person: <b>которого</b>; fem.: <b>которую</b>; neut.: которое; plural: которые / <b>которых</b> (people).', ['Это девушка, <b>которую</b> я люблю.', 'Это фильм, <b>который</b> я смотрел.'], [], 'kot21'),
+  OK3: gfLeafOf('Case of that preposition', 'в / о <b>котором</b> (m., n.), в / о <b>которой</b> (f.), в / о <b>которых</b> (pl.); с которым, к которому, у которого…', ['Это дом, <b>в котором</b> я живу.'], ['The preposition goes before который.'], 'kot21', { next: [['Which case does the preposition need?', 'case']] }),
+  OK4: gfLeafOf('у + Genitive', 'у которого (m., n.), у которой (f.), у которых (pl.).', ['Это брат, <b>у которого</b> есть машина.'], [], 'kot21') },
+ items: [['Это студентка, ___ хорошо говорит по-русски.', '', 'OK1', 'которая', ['который', 'которая', 'которую']], ['Это девушка, ___ я люблю.', '', 'OK2', 'которую', ['которая', 'которую', 'которой']], ['Это дом, в ___ я живу.', '', 'OK3', 'котором', ['который', 'котором', 'которой']], ['Это брат, у ___ есть машина.', '', 'OK4', 'которого', ['который', 'которого', 'котором']]] },
+
+svoj: { title: 'свой or его / её / их?', l: 26, blurb: 'Он любит свою собаку vs. Он любит его собаку', start: 'v0', nodes: {
+  v0: { q: 'Is the owner the SUBJECT of the same clause?', o: [['Yes: he loves his own dog', 'Иван любит ___ собаку.', 'V1'], ['No: the owner is someone else', 'Иван любит его (Петра) собаку.', 'VEGO'], ['The word is itself part of the subject', '___ брат живёт здесь.', 'VEGO']] },
+  V1: { q: 'Is the subject я, ты, мы or вы?', o: [['Yes', 'Я люблю свою / мою маму.', 'VBOTH'], ['No: он, она, оно, они, or a noun', 'Он любит свою маму.', 'VSVOJ']] },
+  VSVOJ: gfLeafOf('свой (must)', 'With he / she / they as owner AND subject, use свой; его / её / их would mean someone else’s. свой declines like мой: свою, своего, в своём.', ['Иван рассказал о <b>своей</b> семье.'], [], 'svoj26'),
+  VBOTH: gfLeafOf('свой or мой / твой / наш / ваш', 'With я / ты / мы / вы both are fine: Я люблю свою маму = Я люблю мою маму.', [], [], 'svoj26'),
+  VEGO: gfLeafOf('его / её / их (or мой…)', 'The owner isn’t the subject of this clause, or the word is in the subject: <b>Его</b> брат живёт здесь.', [], ['Never свой in the subject: not “Свой брат…”.'], 'svoj26') },
+ items: [['Анна любит ___ работу.', '(her own)', 'VSVOJ', 'свою', ['свою', 'её']], ['Это Иван. ___ брат — врач.', '', 'VEGO', 'Его', ['Его', 'Свой']], ['Они продали ___ дом.', '(their own)', 'VSVOJ', 'свой', ['свой', 'их']], ['Я позвонил ___ маме.', '(my own)', 'VBOTH', 'своей|моей', ['своей', 'моей']]] },
+
+comp: { title: 'Comparatives', l: 26, blurb: 'больше, интереснее, более интересный, чем / Genitive', start: 'b0', nodes: {
+  b0: { q: 'Where does the comparison go?', o: [['After the noun, as the predicate (X is bigger)', 'Москва больше Омска.', 'b1'], ['Before a noun, as a description (a bigger city)', 'более интересный фильм', 'BCOMP']] },
+  b1: { q: 'Is the adjective one of the irregular ones?', o: [['Yes: большой, маленький, хороший, плохой, дешёвый, дорогой, молодой, старый, высокий, низкий, близкий, далёкий…', '', 'BIRR'], ['No', 'интересный, тёплый, быстрый', 'BEE']] },
+  BEE: gfLeafOf('-ее', 'интересн<b>ее</b>, тепл<b>ее</b>, быстр<b>ее</b>, медленн<b>ее</b>. Same form for every gender.', ['Сегодня <b>теплее</b>, чем вчера.'], ['“than”: чем (after a comma), or the Genitive with no чем: теплее вчерашнего дня.'], 'comp26'),
+  BIRR: gfLeafOf('Irregular forms', 'больше, меньше, лучше, хуже, дешевле, дороже, моложе, старше, выше, ниже, ближе, дальше, проще, легче.', ['Брат <b>старше</b> меня.'], ['Genitive “than” works only after the simple form: старше меня.'], 'comp26'),
+  BCOMP: gfLeafOf('более + adjective (agrees)', '<b>более</b> интересный фильм, <b>более</b> новая модель. меньше → <b>менее</b>.', [], ['“than” here is always чем.'], 'comp26') },
+ items: [['Москва ___ Омска.', '(большой)', 'BIRR', 'больше'], ['Сегодня ___, чем вчера.', '(тёплый)', 'BEE', 'теплее'], ['Это ___ интересная книга.', '(more)', 'BCOMP', 'более', ['более', 'больше']], ['Говорите ___, пожалуйста.', '(медленный)', 'BEE', 'медленнее']] },
+
+short: { title: 'Long or short adjective?', l: 30, blurb: 'больной / болен, готовый / готов, занятый / занят', start: 'j0', nodes: {
+  j0: { q: 'Where is the adjective?', o: [['Right before a noun (describing it)', 'больной человек', 'JLONG'], ['After the subject, as “is / was …”', 'Он болен. Она была занята.', 'j1']] },
+  j1: { q: 'Which word?', o: [['рад, должен, болен, занят, готов, прав, согласен, свободен, уверен', 'these are usually short', 'JSHORT'], ['A normal descriptive adjective', 'Дом большой. Она красивая.', 'JLONG2']] },
+  JLONG: gfLeafOf('Long form (agrees, full declension)', 'больной человек, занятая женщина, готовый обед.', [], [], 'short30'),
+  JSHORT: gfLeafOf('Short form: -, -а, -о, -ы', 'Он болен, она больна, они больны; рад / рада / рады; занят / занята / заняты.', ['Мы очень <b>рады</b> вас видеть.'], ['рад and должен have no long form in this meaning.'], 'short30'),
+  JLONG2: gfLeafOf('Long form is fine as a predicate', 'Дом большой. Она красивая. (Short forms of these exist but sound bookish or change meaning.)', [], [], 'short30') },
+ items: [['Анна ___.', '(is sick)', 'JSHORT', 'больна', ['больная', 'больна']], ['Мы очень ___ вас видеть.', '(рад)', 'JSHORT', 'рады'], ['Это ___ человек.', '(больной)', 'JLONG', 'больной', ['больной', 'болен']]] },
+
+chtoby: { title: 'чтобы: infinitive or past tense?', l: 33, blurb: 'Я пришёл, чтобы помочь / Я хочу, чтобы ты помог', start: 'h0', nodes: {
+  h0: { q: 'Who does the action after чтобы?', o: [['The same person as the main clause', 'Я пришёл, чтобы (я) помочь.', 'HINF'], ['A different person', 'Я хочу, чтобы ТЫ помог.', 'HPAST']] },
+  HINF: gfLeafOf('чтобы + infinitive', 'Purpose, same subject: <i>Он учит русский, <b>чтобы работать</b> в Москве.</i>', [], ['After хотеть with the same subject, no чтобы at all: Я хочу помочь.'], 'chtoby33'),
+  HPAST: gfLeafOf('чтобы + past tense', 'Different subject: <i>Я хочу, <b>чтобы ты помог</b>. Командир сказал, <b>чтобы мы ждали</b>.</i> Past form even for the future.', [], ['сказать, чтобы = order; сказать, что = report.'], 'chtoby33') },
+ items: [['Я хочу, чтобы ты ___ мне.', '(помочь)', 'HPAST', 'помог', ['помочь', 'помог']], ['Я пришёл, чтобы ___ тебе.', '(помочь)', 'HINF', 'помочь', ['помочь', 'помог']], ['Мама просит, чтобы дети ___ домой.', '(прийти)', 'HPAST', 'пришли', ['прийти', 'пришли']]] },
+
+nibud: { title: '-то or -нибудь?', l: 33, blurb: 'кто-то / кто-нибудь, что-то / что-нибудь', start: 'k0', nodes: {
+  k0: { q: 'What kind of sentence?', o: [['A statement about something that really happened / is happening', 'Someone called. He said something.', 'KTO'], ['A question', 'Did anyone call?', 'KNIB'], ['A command or request', 'Buy something.', 'KNIB'], ['Future or a habit, not a specific one', 'Let’s go somewhere. He always reads something.', 'KNIB']] },
+  KTO: gfLeafOf('-то: a specific one the speaker can’t / won’t name', 'кто-то, что-то, где-то, куда-то, когда-то, какой-то.', ['<b>Кто-то</b> звонил.'], [], 'to33'),
+  KNIB: gfLeafOf('-нибудь: any (not a specific one)', 'кто-нибудь, что-нибудь, где-нибудь, куда-нибудь, когда-нибудь.', ['Вам <b>кто-нибудь</b> звонил?', 'Купи <b>что-нибудь</b>.'], ['когда-нибудь in questions = ever.'], 'to33') },
+ items: [['Тебе ___ звонил.', '(someone)', 'KTO', 'кто-то', ['кто-то', 'кто-нибудь']], ['Вам ___ звонил?', '(anyone)', 'KNIB', 'кто-нибудь', ['кто-то', 'кто-нибудь']], ['Купи ___ на ужин.', '', 'KNIB', 'что-нибудь', ['что-то', 'что-нибудь']], ['Он ___ сказал, но я не услышал.', '', 'KTO', 'что-то', ['что-то', 'что-нибудь']]] },
+
+part: { title: 'Which participle?', l: 34, blurb: 'читающий, читавший, читаемый, прочитанный', start: 'pa0', nodes: {
+  pa0: { q: 'Does the noun DO the action, or is it done TO the noun?', o: [['The noun does it (active)', 'the student who reads', 'pa1'], ['It is done to the noun (passive)', 'the book that was read', 'pa2', 35]] },
+  pa1: { q: 'When?', o: [['At the same time / now', 'студент, который читает', 'PAPRES'], ['Before / in the past', 'студент, который читал / прочитал', 'PAPAST']] },
+  pa2: { q: 'Long or short?', o: [['Before or after the noun as a description', 'написанное письмо', 'PPLONG'], ['As the predicate: “was done”', 'Письмо написано.', 'PPSHORT']] },
+  PAPRES: gfLeafOf('Present active: они-stem + -щий', 'читают → чита<b>ющий</b>, говорят → говор<b>ящий</b>, живут → жив<b>ущий</b>, -ся → -щийся. Imperfective only.', ['студент, <b>читающий</b> газету'], ['Agrees like an adjective: читающая, читающие, читающего…'], 'part34'),
+  PAPAST: gfLeafOf('Past active: -вший / -ший', 'читал → чита<b>вший</b>, прочитал → прочита<b>вший</b>, нёс → нёс<b>ший</b>, вернулся → верну<b>вшийся</b>.', ['человек, <b>написавший</b> письмо'], [], 'part34'),
+  PPLONG: gfLeafOf('Past passive (long): -нный / -енный / -тый', 'написать → написа<b>нный</b>, получить → получ<b>енный</b>, купить → купл<b>енный</b>, открыть → откры<b>тый</b>. Perfective verbs.', ['<b>написанное</b> письмо'], ['Long form: two н.'], 'ppp35'),
+  PPSHORT: gfLeafOf('Past passive (short): -н / -на / -но / -ны, -т', 'Письмо написа<b>но</b>. Дверь закры<b>та</b>. Билеты прода<b>ны</b>.', [], ['Short form: one н.', 'Past / future with был / будет: Письмо было написано.'], 'ppp35') },
+ items: [['Студентка, ___ газету, — моя сестра.', '(who is reading)', 'PAPRES', 'читающая', ['читающая', 'читавшая', 'читаемая']], ['Я знаю человека, ___ это письмо.', '(who wrote)', 'PAPAST', 'написавшего', ['написавшего', 'пишущего', 'написанного']], ['Письмо уже ___.', '(написать)', 'PPSHORT', 'написано', ['написанное', 'написано']], ['Все билеты ___.', '(продать)', 'PPSHORT', 'проданы', ['проданные', 'проданы']]] },
+
+vadv: { title: 'Verbal adverbs: -я or -в?', l: 38, blurb: 'читая (while reading) / прочитав (having read)', start: 'va0', nodes: {
+  va0: { q: 'Is the subject of both actions the same person?', o: [['Yes', '', 'va1'], ['No', 'I was reading and she came in.', 'VANO']] },
+  va1: { q: 'When does the second action happen?', o: [['At the same time as the main verb (while…)', 'Читая газету, он пил кофе.', 'VAIM'], ['Before the main verb (having done…, after…)', 'Прочитав письмо, она позвонила.', 'VAPF']] },
+  VAIM: gfLeafOf('Imperfective: они-stem + -я (-а after ж, ш, ч, щ)', 'читают → чита<b>я</b>, говорят → говор<b>я</b>, слышат → слыш<b>а</b>, занимаются → занима<b>ясь</b>.', [], ['Not for verbs like писать, ждать (no common form).'], 'vadv38'),
+  VAPF: gfLeafOf('Perfective: past stem + -в (-вшись)', 'прочитал → прочита<b>в</b>, написал → написа<b>в</b>, вернулся → верну<b>вшись</b>.', [], [], 'vadv38'),
+  VANO: gfLeafOf('Can’t use a verbal adverb', 'Different subjects need a full clause: <i>Когда я читал, она вошла.</i>', [], [], 'vadv38') },
+ items: [['___ газету, он пил кофе.', '(читать)', 'VAIM', 'Читая', ['Читая', 'Прочитав']], ['___ письмо, она пошла на почту.', '(написать)', 'VAPF', 'Написав', ['Пиша', 'Написав']], ['___ домой, он лёг спать.', '(вернуться)', 'VAPF', 'Вернувшись', ['Возвращаясь', 'Вернувшись']]] },
+
+cond: { title: 'If: если or если бы?', l: 40, blurb: 'Если будет дождь… / Если бы у меня были деньги…', start: 'c0', nodes: {
+  c0: { q: 'Is the condition real (possible) or imagined (contrary to fact)?', o: [['Real: it may well happen', 'If it rains tomorrow…', 'CREAL'], ['Imagined: it isn’t / wasn’t true', 'If I had money… / If I had known…', 'CUNREAL']] },
+  CREAL: gfLeafOf('если + future → future', '<i>Если завтра <b>будет</b> дождь, мы не <b>пойдём</b>.</i>', [], ['English uses present after “if”; Russian uses future.'], 'cond40'),
+  CUNREAL: gfLeafOf('если бы + past … бы + past', '<i>Если <b>бы</b> у меня <b>были</b> деньги, я <b>бы купил</b> машину.</i> One form for “would” and “would have”.', [], ['Always past tense forms, even for the present or future.'], 'cond40') },
+ items: [['Если завтра ___ хорошая погода, мы поедем на море.', '(быть)', 'CREAL', 'будет', ['будет', 'была']], ['Если бы у меня ___ время, я бы помог.', '(быть)', 'CUNREAL', 'было', ['будет', 'было']], ['Если ты ___ мне, я тебе помогу.', '(позвонить)', 'CREAL', 'позвонишь', ['позвонишь', 'позвонил бы']]] },
+
+ind: { title: 'Reported speech', l: 40, blurb: 'сказал, что… / спросил, … ли / сказал, чтобы…', start: 'r0', nodes: {
+  r0: { q: 'What was originally said?', o: [['A statement', '«Я устал.»', 'RSTAT'], ['A yes / no question', '«Ты придёшь?»', 'RLI'], ['A question with a question word', '«Где ты живёшь?»', 'RWH'], ['A command or request', '«Позвони!»', 'RCMD']] },
+  RSTAT: gfLeafOf('что + the ORIGINAL tense', '«Я устал» → Он сказал, что <b>устал</b>. «Я иду» → Он сказал, что <b>идёт</b> (not шёл).', [], ['Change pronouns, never the tense.'], 'ind40'),
+  RLI: gfLeafOf('ли after the key word', '«Ты придёшь?» → Он спросил, <b>приду ли</b> я. «Это правда?» → Он спросил, <b>правда ли</b> это.', [], ['Never “если” for “whether”.'], 'ind40'),
+  RWH: gfLeafOf('Keep the question word', '«Где ты живёшь?» → Он спросил, <b>где</b> я живу.', [], [], 'ind40'),
+  RCMD: gfLeafOf('чтобы + past tense', '«Позвони!» → Мама сказала, <b>чтобы</b> я <b>позвонил</b>.', [], [], 'ind40') },
+ items: [['Он спросил: «Ты придёшь?» → Он спросил, приду ___ я.', '', 'RLI', 'ли', ['ли', 'если', 'что']], ['Мама сказала: «Позвони!» → Мама сказала, ___ я позвонил.', '', 'RCMD', 'чтобы', ['что', 'чтобы']], ['Анна сказала: «Я работаю». → Анна сказала, что она ___.', '(работать)', 'RSTAT', 'работает', ['работает', 'работала']]] },
+});
+
 // Motion-verb results are generated: one per way of moving × (one trip now / regular / round trip).
 (() => {
   const V = { F: ['идти', 'иду, идёшь, идёт, идём, идёте, идут', 'шёл, шла, шли', 'ходить', 'хожу, ходишь, ходит, ходим, ходите, ходят', 'ходил, ходила, ходили', 'on foot'],
@@ -2480,7 +2756,7 @@ pron: { title: 'Pronoun forms', l: 7, blurb: 'он / его / у него / о �
 
 const gfChart = id => GF[id];
 const gfOk = o => (o[3] || 0) <= curLesson();
-const gfCharts = () => Object.entries(GF).filter(([k, c]) => k !== 'hub' && c.l <= curLesson());
+const gfCharts = () => Object.entries(GF).filter(([k, c]) => k !== 'hub' && c.l <= curLesson()).sort((a, b) => a[1].l - b[1].l);
 function gfReach(c, from, target, seen = new Set()) {
   if (from === target) return true; if (seen.has(from)) return false; seen.add(from);
   const n = c.nodes[from]; if (!n || n.leaf) return false;
@@ -2586,7 +2862,7 @@ function gfCards() {
   const list = gfCharts();
   if (!list.length) return '';
   return `<h2 class="grl">Decision charts</h2><p class="small muted">Answer one question at a time and the chart leads you to the right form, with what not to forget. Then try it on real sentences.</p>
-    <div class="gf-cards"><button class="gf-card hub" data-gfgo="hub"><b>Not sure? Start here</b><span>Which chart do I need?</span></button>${list.map(([k, c]) => `<button class="gf-card" data-gfgo="${k}"><b>${esc(c.title)}</b><span>${esc(c.blurb)}</span></button>`).join('')}</div>`;
+    <div class="gf-cards"><button class="gf-card hub" data-gfgo="hub"><b>Not sure? Start here</b><span>Which chart do I need?</span></button>${list.map(([k, c]) => `<button class="gf-card" data-gfgo="${k}"><b>${esc(c.title)}</b><span>${esc(c.blurb)}</span><span class="gf-from">from Lesson ${c.l}</span></button>`).join('')}</div>`;
 }
 
 /* ============================== START HERE (guide) ============================== */
