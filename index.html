@@ -173,6 +173,36 @@ details.grr.locked { opacity: .65; }
 h2.grl { margin-top: 26px; } h2.grl .muted { font-weight: 400; font-size: .85em; }
 .grx table { border-collapse: collapse; margin: 8px 0 12px; font-size: .92rem; max-width: 100%; display: block; overflow-x: auto; }
 .grx td, .grx th { border: 1px solid var(--line); padding: 5px 9px; text-align: left; vertical-align: top; } .grx th { background: var(--paper); }
+
+/* grammar decision charts */
+.gf-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin: 10px 0 6px; }
+.gf-card { text-align: left; border: 1px solid var(--line); border-radius: 6px; background: var(--card); padding: 12px 14px; cursor: pointer; font: inherit; color: var(--text); display: flex; flex-direction: column; gap: 3px; }
+.gf-card:hover { border-color: var(--ink); } .gf-card b { color: var(--ink); } .gf-card span { font-size: .85rem; color: var(--muted); }
+.gf-card.hub { border: 2px solid var(--ink); }
+.gf-tabs { margin: 6px 0 18px; }
+.gf-trail { display: flex; flex-direction: column; align-items: stretch; }
+.gf-step { text-align: left; font: inherit; color: var(--text); border: 1px dashed var(--line); border-radius: 6px; background: var(--paper); padding: 8px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.gf-step span { font-size: .8rem; color: var(--muted); } .gf-step b { color: var(--ink); } .gf-step.done { cursor: default; }
+.gf-arrow { text-align: center; color: var(--muted); line-height: 1.4; font-size: 1.1rem; }
+.gf-q, .gf-leaf, .gf-final, .gf-sent { border: 2px solid var(--ink); border-radius: 8px; background: var(--card); padding: 16px; }
+.gf-sent { border-width: 1px; margin-bottom: 14px; } .gf-final { margin-top: 12px; border-color: var(--line); }
+.gf-qt { font-weight: 700; font-size: 1.12rem; color: var(--ink); margin-bottom: 10px; }
+.gf-opts { display: grid; gap: 8px; }
+.gf-opt { text-align: left; font: inherit; color: var(--text); background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; }
+.gf-opt:hover:not(:disabled) { border-color: var(--ink); } .gf-opt span { font-size: .85rem; color: var(--muted); }
+.gf-opt:disabled { opacity: .5; cursor: not-allowed; } .gf-opt .gf-lock, .gf-opt .gf-jump { font-size: .75rem; font-weight: 700; color: var(--ink); }
+.gf-opt.bad { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, var(--paper)); }
+.gf-leaf { border-color: var(--good); } .gf-leaf h2 { margin: 2px 0 8px; }
+.gf-ex { margin: 8px 0; } .gf-ex .ru { margin: 3px 0; }
+.gf-dont { border-left: 4px solid var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); padding: 8px 12px; margin: 10px 0; border-radius: 0 6px 6px 0; }
+.gf-dont ul { margin: 4px 0 0; padding-left: 18px; }
+.gf-map { overflow-x: auto; padding-bottom: 10px; }
+.gf-tree { list-style: none; margin: 0 0 0 14px; padding: 0 0 0 14px; border-left: 2px solid var(--line); }
+.gf-tree > li { position: relative; padding: 8px 0 0 0; } .gf-tree > li::before { content: ''; position: absolute; left: -14px; top: 20px; width: 12px; border-top: 2px solid var(--line); }
+.gf-tree > li.lock { opacity: .5; }
+.gf-edge { font-size: .8rem; color: var(--muted); margin: 0 0 4px; }
+.gf-mnode { font: inherit; font-size: .92rem; text-align: left; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--text); padding: 6px 10px; cursor: pointer; max-width: 520px; }
+.gf-mnode.q { border: 2px solid var(--ink); font-weight: 700; color: var(--ink); } .gf-mnode.leaf { border: 2px solid var(--good); } .gf-mnode.jump { border-style: dashed; color: var(--ink); }
 /* print report */
 .res-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .res-head h1 { margin-bottom: 8px; } .res-head .btn { margin-top: 20px; }
@@ -223,7 +253,7 @@ body.rep-open { overflow: hidden; }
   var deferred = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; var b = document.getElementById('installBtn'); if (b) b.hidden = false; });
   window.appInstall = function () { if (deferred) { deferred.prompt(); deferred = null; } };
-  window.APP_VERSION = '0f4aa103';
+  window.APP_VERSION = 'bada5cd1';
   // Hard refresh: drop the offline copy and load the newest version. Progress (saved separately on the device) is not touched.
   window.appHardRefresh = async function () {
     var b = document.getElementById('updBtn'); if (b) { b.disabled = true; b.textContent = 'Updating…'; }
@@ -2214,7 +2244,7 @@ function viewGtab() {
     return `<details class="grr${locked ? ' locked' : ''}" data-rid="${r.id}" ${open === r.id ? 'open' : ''}><summary><span class="grn">${esc(r.name)}</span>
       <span class="grs" style="--c:${col}">${lab}${s.pct != null ? ` · ${s.pct}%` : ''}</span></summary>
       <div class="rule grx">${r.ex}</div>
-      <div class="actions">${locked ? `<span class="small muted">Unlocks at Lesson ${r.l}.</span>` : `<button class="btn sm" data-gp="${r.id}">Practice (${Math.min(10, nItems)})</button>`}<span class="small muted">${nItems} questions in this rule${s.n ? ` · answered ${s.n} so far` : ''}</span></div></details>`; };
+      <div class="actions">${locked ? `<span class="small muted">Unlocks at Lesson ${r.l}.</span>` : `<button class="btn sm" data-gp="${r.id}">Practice (${Math.min(10, nItems)})</button>${[...(GFRULE[r.id] || [])].filter(k => GF[k].l <= L).map(k => `<button class="btn ghost sm" data-gfgo="${k}">Chart: ${esc(GF[k].title)}</button>`).join('')}`}<span class="small muted">${nItems} questions in this rule${s.n ? ` · answered ${s.n} so far` : ''}</span></div></details>`; };
   return `<div class="eyebrow" style="margin-top:28px">Grammar · Lessons 1–${L}</div><h1>Grammar</h1>
     <p class="muted">Every grammar rule from the course up to the lesson you’re on (${esc(lessonLabel(L))}; change it with “I’m on” at the top). Open a rule to read the explanation, then practice it. Mistakes also feed the Coach.</p>
     <div class="sheet"><div class="plan">
@@ -2227,6 +2257,7 @@ function viewGtab() {
         ${fresh.length && fresh.length < rules.length ? `<button class="btn ghost" data-gset="new">Rules I haven’t tried (10)</button>` : ''}</div>
       <div class="actions"><label class="small muted" for="gmode">Answers</label><select id="gmode"><option value="mix" ${mode === 'mix' ? 'selected' : ''}>Mixed: choose or type</option><option value="type" ${mode === 'type' ? 'selected' : ''}>Type everything (harder)</option></select>
         <label class="small muted"><input type="checkbox" id="gall" ${showAll ? 'checked' : ''}> Show later lessons too (${later.length} more rules)</label></div></div>
+    ${gfCards()}<h2 class="grl" style="margin-top:34px">Rules by lesson</h2>
     ${lessons.map(l => `<h2 class="grl">Lesson ${l}${COURSE_TITLES[l] ? ` <span class="muted">· ${esc(COURSE_TITLES[l])}</span>` : ''}</h2>${(showAll ? GRULES : rules).filter(r => r.l === l).map(row).join('')}`).join('')}
     ${!showAll && later.length ? `<p class="small muted">${later.length} more rules unlock as you move through Lessons ${L + 1}–40.</p>` : ''}`;
 }
@@ -2237,11 +2268,320 @@ function wireGtab(el) {
   $('#gall', el).onchange = e => { LS.set('gall', e.target.checked); render(); };
   el.querySelectorAll('details.grr').forEach(d => d.addEventListener('toggle', () => { if (d.open) LS.set('gopen', d.dataset.rid); }));
   el.querySelectorAll('[data-gp]').forEach(b => b.onclick = () => startSection('gtab', { rules: [b.dataset.gp], n: 10 }));
+  el.querySelectorAll('[data-gfgo]').forEach(b => b.onclick = () => gfOpen(b.dataset.gfgo));
   el.querySelectorAll('[data-gset]').forEach(b => b.onclick = () => {
     const k = b.dataset.gset, st = id => grRule(id).status;
     const ids = (k === 'all' ? rules : k === 'cur' ? rules.filter(r => r.l === L) : k === 'weak' ? rules.filter(r => ['weak', 'almost'].includes(st(r.id))) : rules.filter(r => st(r.id) === 'new')).map(r => r.id);
     startSection('gtab', { rules: ids, n: k === 'all' ? 15 : 10, set: k });
   });
+}
+
+/* ============================== GRAMMAR DECISION CHARTS ==============================
+   Each chart: question nodes {q, hint, o: [[label, example, target, minLesson?]]} and result nodes {leaf, t, b, ex, dont, next, rule}.
+   Try-it items: [sentence, cue, target leaf, answer ("a|b"), choices?]. */
+const GF = {
+hub: { title: 'Which chart do I need?', l: 1, blurb: 'Start here when you’re not sure what decision you’re facing.', start: 'h0', nodes: {
+  h0: { q: 'What are you stuck on?', o: [
+    ['Which case a noun (or pronoun) goes in', 'Я живу в ___ (город)', '@case'], ['The actual ending once I know the case', 'книгу? книге? книга?', 'h1'],
+    ['Which verb of motion', 'хожу / иду / езжу / еду / летаю / лечу…', '@motion', 9], ['в or на', 'в магазине / на почте', '@vna', 5],
+    ['Past tense: which aspect', 'читал or прочитал?', '@aspect', 8], ['Telling time', 'час / часа / часов', '@time', 13],
+    ['есть or no есть', 'У меня есть машина / У меня новая машина', '@est', 11], ['холодный or холодно', 'adjective or adverb', '@adv', 9],
+    ['Negative words', 'никто, ничего, никогда, нигде…', '@neg', 12], ['Pronoun forms', 'он / его / него / о нём', '@pron', 7]] },
+  h1: { q: 'Which case is it?', o: [['Nominative (dictionary form) — making an adjective agree', 'новый / новая / новое', '@adjnom', 5], ['Accusative', 'книгу, брата, новую', '@accend', 7], ['Prepositional', 'в городе, в аудитории, в саду', '@prepend', 5], ['I don’t know the case yet', '', '@case']] } } },
+
+case: { title: 'Which case?', l: 5, blurb: 'Subject, object, after a preposition, or a time expression.', start: 'c0', nodes: {
+  c0: { q: 'What job does the word do in the sentence?', o: [
+    ['It’s the subject, or it follows Это / Вот / Где…?', 'Анна читает. Это книга. Где словарь?', 'NOM'],
+    ['It’s what or whom the action is done to (direct object)', 'Я читаю книгу. Я знаю Анну.', 'ACC', 7],
+    ['It comes right after a preposition', 'в, на, о / об, у…', 'c1'],
+    ['It says when (a day, a clock time, “every…”)', 'в понедельник, в пять часов, каждый день', 'c3', 8],
+    ['“I have / he has”', 'У меня есть брат.', 'UHAVE', 11]] },
+  c1: { q: 'Which preposition?', o: [['в or на', 'в школе / в школу', 'c2'], ['о / об / обо (about)', 'о брате, об отце', 'ABOUT', 11], ['у (at someone’s, someone has)', 'у меня, у брата', 'UHAVE', 11],
+    ['из, с, до, после, без, для, от, около', 'from Lesson 16: all take Genitive', 'GEN', 16]] },
+  c2: { q: 'Is it where something IS, or where something GOES?', hint: 'Look at the verb. жить, работать, быть, сидеть, отдыхать = где? · идти, ехать, ходить, ездить, летать, класть = куда?', o: [
+    ['Where it is or happens (где?)', 'Я живу в Москве. Мы на работе.', 'PREP'], ['Where to (куда?)', 'Я иду в школу. Мы едем на работу.', 'ACCDIR', 9],
+    ['It’s actually a time', 'в среду, в пять часов, в мае', 'c3', 8], ['By (a vehicle)', 'на автобусе, на машине', 'BYVEH', 12]] },
+  c3: { q: 'What kind of time?', o: [['A day of the week', 'в понедельник, в среду', 'TDAY', 8], ['A clock time', 'в пять часов', 'TCLOCK', 13], ['“Every …” (каждый)', 'каждый день, каждую субботу', 'TEACH', 11],
+    ['A part of the day', 'утром, вечером', 'TPART', 6], ['A month or year', 'в мае, в этом году', 'TMONTH', 14], ['A week', 'на этой неделе', 'TWEEK', 14]] },
+  NOM: { leaf: 1, t: 'Nominative: the dictionary form', b: 'Subjects and words after <b>Это / Вот / Где …?</b> stay in the dictionary form. Adjectives with them agree in gender and number.', ex: ['<b>Книга</b> на столе.', 'Это <b>мой брат</b>.', 'Где <b>словарь</b>?'], dont: ['An adjective still has to agree: новая книга, новое окно.', 'In “Это …” sentences, это never changes: Это моя сестра.'], next: [['Adjective ending in the Nominative', 'adjnom']], rule: 'gen2' },
+  ACC: { leaf: 1, t: 'Accusative: the direct object', b: 'The thing or person the action is done to (что? кого?) goes in the <b>Accusative</b>.', ex: ['Я читаю <b>книгу</b>.', 'Мы видим <b>брата</b>.', 'Она любит <b>его</b>.'], dont: ['Things and people end differently in the masculine: журнал (no change) vs. брата.', 'Some verbs aren’t followed by a direct object: жить, работать, гулять.'], next: [['Get the Accusative ending', 'accend']], rule: 'acc7' },
+  PREP: { leaf: 1, t: 'Prepositional: location (где?)', b: '<b>в / на + Prepositional</b> answers <b>где?</b> — where something is or happens.', ex: ['Я живу в <b>городе</b>.', 'Он работает на <b>заводе</b>.', 'Мы в <b>аудитории</b>.'], dont: ['Choose в or на first, then the case: same preposition for где and куда.', 'Some nouns take -у here: в саду, в лесу, на мосту.'], next: [['Get the Prepositional ending', 'prepend'], ['в or на?', 'vna']], rule: 'prep5' },
+  ACCDIR: { leaf: 1, t: 'Accusative: direction (куда?)', b: '<b>в / на + Accusative</b> answers <b>куда?</b> — where someone or something is going.', ex: ['Я иду в <b>школу</b>.', 'Мы едем на <b>работу</b>.', 'Он летит в <b>Москву</b>.'], dont: ['Home: домой (direction) vs. дома (location) — no preposition.', 'Here / there: сюда, туда (direction) vs. здесь, там (location).'], next: [['Get the Accusative ending', 'accend'], ['Which verb of motion?', 'motion']], rule: 'loc9' },
+  ABOUT: { leaf: 1, t: 'Prepositional: about (о / об)', b: '<b>о + Prepositional</b> = about. Before a vowel sound use <b>об</b>; with мне use <b>обо</b>.', ex: ['Мы говорим о <b>брате</b>.', 'Он думает об <b>отце</b>.', 'Расскажите обо <b>мне</b>.'], dont: ['об before а, о, у, э, и: об Анне, об этом.', '-у nouns go back to -е after о: в лесу but о лесе.'], next: [['Get the Prepositional ending', 'prepend'], ['Pronoun forms (о нём, о ней)', 'pron']], rule: 'o11' },
+  UHAVE: { leaf: 1, t: 'у + Genitive: “has”', b: '“I have” = <b>у меня (есть)</b>. Pronouns after у take an н-: у него, у неё, у них. Nouns are Genitive (Lesson 16+): у брата.', ex: ['<b>У меня</b> есть машина.', '<b>У него</b> есть сестра.', '<b>У вас</b> есть словарь?'], dont: ['The thing you have stays Nominative: У меня есть машина (not машину).', 'Decide whether you need есть at all.'], next: [['есть or no есть?', 'est'], ['Pronoun forms', 'pron']], rule: 'est11' },
+  GEN: { leaf: 1, t: 'Genitive after these prepositions', b: 'из, с (from), до, после, без, для, от, около, у all take the <b>Genitive</b>: из Москвы, после работы, без сахара.', ex: ['Он из <b>России</b>.', 'После <b>обеда</b> мы гуляем.'], dont: ['Mirror rule: в → из, на → с (в школу → из школы, на работу → с работы).'], rule: 'genp16' },
+  BYVEH: { leaf: 1, t: 'на + Prepositional: by vehicle', b: 'How you travel = <b>на</b> + Prepositional: на автобусе, на машине, на поезде, на метро (no change). <b>В</b> автобусе = inside the bus.', ex: ['Я езжу на работу на <b>автобусе</b>.', 'В <b>автобусе</b> нельзя курить.'], dont: ['On foot = пешком (no preposition).'], next: [['Which verb of motion?', 'motion']], rule: 'loc9' },
+  TDAY: { leaf: 1, t: 'Days: в + Accusative', b: 'On a day = <b>в</b> + Accusative: в понедельник, <b>во</b> вторник, в среду, в пятницу, в субботу, в воскресенье.', ex: ['Мы отдыхаем в <b>субботу</b>.', 'Во <b>вторник</b> у нас урок.'], dont: ['-а days change: среда → в среду, суббота → в субботу.', 'Every Saturday = каждую субботу (no в).'], rule: 'days8' },
+  TCLOCK: { leaf: 1, t: 'Clock time: в + number + час', b: 'At a time = <b>в</b> + the time: в час, в два часа, в пять часов.', ex: ['Урок начинается в <b>девять часов</b>.', 'Я встаю в <b>семь</b>.'], dont: ['1 → час, 2–4 → часа, 5–12 → часов.', 'At what time? = Во сколько? / В котором часу?'], next: [['Telling time chart', 'time']], rule: 'time13' },
+  TEACH: { leaf: 1, t: '“Every …”: каждый + Accusative, no preposition', b: 'каждый день, <b>каждую</b> неделю, <b>каждое</b> утро, каждый год — no в.', ex: ['Я бегаю <b>каждое утро</b>.', 'Мы ходим в кино <b>каждую субботу</b>.'], dont: ['каждый agrees with the noun’s gender in the Accusative.'], rule: 'freq11' },
+  TPART: { leaf: 1, t: 'Parts of the day: special words', b: 'утром (in the morning), днём (in the afternoon), вечером (in the evening), ночью (at night) — no preposition.', ex: ['<b>Вечером</b> я читаю.', '<b>Утром</b> он бегает.'], dont: ['With clock times use the Genitive: в шесть часов утра / вечера.'] },
+  TMONTH: { leaf: 1, t: 'Months and years: в + Prepositional', b: 'в январе, в мае, в этом году, в прошлом году.', ex: ['Я родился в <b>мае</b>.', 'В <b>этом году</b> мы едем в Россию.'], dont: ['году is a special -у form: в прошлом году.'], rule: 'texp14' },
+  TWEEK: { leaf: 1, t: 'Weeks: на + Prepositional', b: 'на этой неделе, на прошлой неделе, на следующей неделе.', ex: ['Мы были там <b>на прошлой неделе</b>.'], dont: ['But the whole week = всю неделю (Accusative, no preposition).'], rule: 'texp14' } },
+ items: [['Я живу в ___.', '(Москва)', 'PREP', 'Москве'], ['Мы идём в ___.', '(школа)', 'ACCDIR', 'школу'], ['Я читаю ___.', '(газета)', 'ACC', 'газету'], ['___ лежит на столе.', '(книга)', 'NOM', 'Книга'],
+   ['Он работает на ___.', '(почта)', 'PREP', 'почте'], ['Мы говорим о ___.', '(Анна)', 'ABOUT', 'Анне'], ['Мы едем на ___.', '(работа)', 'ACCDIR', 'работу'], ['Я отдыхаю в ___.', '(суббота)', 'TDAY', 'субботу'],
+   ['Урок начинается в ___.', '(два часа)', 'TCLOCK', 'два часа'], ['Ты знаешь ___?', '(Иван)', 'ACC', 'Ивана'], ['Я езжу в банк на ___.', '(автобус)', 'BYVEH', 'автобусе'], ['Он бегает ___ утро.', '(каждый)', 'TEACH', 'каждое']] },
+
+accend: { title: 'Accusative ending', l: 7, blurb: 'книгу, брата, журнал, новую, нового, меня…', start: 'a0', nodes: {
+  a0: { q: 'What kind of word is it?', o: [['A noun', 'книга, брат, письмо', 'a1'], ['An adjective, possessive or этот', 'новый, мой, этот', 'a3', 8], ['A personal pronoun', 'я, ты, он, она…', 'APRON']] },
+  a1: { q: 'How does the noun end (dictionary form)?', o: [['-а or -я (any gender, even папа)', 'книга, неделя, папа, Ваня', 'AA'], ['A consonant, -й or -ь, and it’s masculine', 'журнал, брат, музей, учитель', 'a2'], ['-о or -е (neuter)', 'окно, письмо, море', 'ANO'], ['-ь and it’s feminine', 'тетрадь, мать, дочь', 'ANO'], ['It’s plural', 'книги, братья', 'APL', 27]] },
+  a2: { q: 'Is it a person or an animal?', o: [['Yes', 'брат, учитель, Андрей, кот', 'AANIM'], ['No, it’s a thing', 'журнал, музей, словарь', 'ANO']] },
+  a3: { q: 'What gender is the noun it goes with?', o: [['Feminine', 'книга, сестра', 'ADJF'], ['Masculine', 'журнал, брат', 'a4'], ['Neuter', 'письмо, платье', 'ANOADJ']] },
+  a4: { q: 'Is the masculine noun a person or animal?', o: [['Yes', 'нового студента', 'ADJMA'], ['No', 'новый журнал', 'ANOADJ']] },
+  AA: { leaf: 1, t: '-а → -у, -я → -ю', b: 'Every noun ending in -а / -я changes, whatever its gender: книга → <b>книгу</b>, неделя → <b>неделю</b>, папа → <b>папу</b>.', ex: ['Я читаю <b>книгу</b>.', 'Мы любим <b>маму</b>.', 'Я жду <b>Ваню</b>.'], dont: ['-ия → -ию: Россия → Россию.', 'Adjectives with it end in -ую / -юю: новую книгу.'], rule: 'acc7' },
+  AANIM: { leaf: 1, t: 'Masculine person / animal: + -а or -я', b: 'Hard consonant + <b>-а</b>; -й / -ь → <b>-я</b>: брат → <b>брата</b>, учитель → <b>учителя</b>, Андрей → <b>Андрея</b>.', ex: ['Я знаю <b>брата</b>.', 'Вы видите <b>преподавателя</b>?'], dont: ['This is the same as the Genitive form.', 'Words ending in -а (папа, дядя) follow the -у rule instead: папу.'], rule: 'acc7' },
+  ANO: { leaf: 1, t: 'No change', b: 'Masculine things, all neuter nouns, and feminine nouns in -ь look exactly like the dictionary form.', ex: ['Я читаю <b>журнал</b>.', 'Он пишет <b>письмо</b>.', 'Я люблю <b>мать</b>.'], dont: ['Feminine -ь stays even for people: мать, дочь.', 'If it’s a masculine PERSON, it changes: брата.'], rule: 'acc7' },
+  APL: { leaf: 1, t: 'Plural', b: 'Things: same as the Nominative plural (книги). People and animals: same as the Genitive plural (студентов, сестёр).', ex: ['Я вижу <b>дома</b>.', 'Я вижу <b>студентов</b>.'], dont: [], rule: 'accpl27' },
+  APRON: { leaf: 1, t: 'Pronouns in the Accusative', b: '<table><tr><td>я → меня</td><td>мы → нас</td></tr><tr><td>ты → тебя</td><td>вы → вас</td></tr><tr><td>он, оно → его</td><td>они → их</td></tr><tr><td>она → её</td><td>кто → кого</td></tr></table>', ex: ['Ты <b>меня</b> понимаешь?', 'Я люблю <b>её</b>.'], dont: ['After a preposition add н-: на него, про неё.'], next: [['Pronoun forms chart', 'pron']], rule: 'acc7' },
+  ADJF: { leaf: 1, t: 'Feminine: -ую / -юю', b: 'новая → <b>новую</b>, синяя → <b>синюю</b>, моя → <b>мою</b>, наша → <b>нашу</b>, эта → <b>эту</b>.', ex: ['Я купил <b>новую</b> рубашку.', 'Я читаю <b>эту</b> книгу.'], dont: ['The noun changes too: новую книгу.'], rule: 'accadj8' },
+  ADJMA: { leaf: 1, t: 'Masculine person / animal: -ого / -его', b: 'нового, хорошего, <b>моего</b>, <b>нашего</b>, <b>этого</b> (spelled -ого, said “-ова”).', ex: ['Я знаю <b>нового</b> студента.', 'Вы видели <b>моего</b> брата?'], dont: ['The noun gets -а / -я too: нового студента.'], rule: 'accadj8' },
+  ANOADJ: { leaf: 1, t: 'No change', b: 'Masculine things and all neuter words keep the dictionary form: <b>новый</b> журнал, <b>новое</b> платье, <b>мой</b> дом.', ex: ['Я купил <b>новый</b> телефон.', 'Она надела <b>синее</b> платье.'], dont: ['Check the noun: is it a masculine PERSON? Then it’s нового.'], rule: 'accadj8' } },
+ items: [['Я читаю ___.', '(книга)', 'AA', 'книгу'], ['Я знаю ___.', '(учитель)', 'AANIM', 'учителя'], ['Он пишет ___.', '(письмо)', 'ANO', 'письмо'], ['Мы видим ___.', '(она)', 'APRON', 'её'],
+   ['Я купил ___ рубашку.', '(новый)', 'ADJF', 'новую'], ['Вы знаете ___ брата?', '(мой)', 'ADJMA', 'моего'], ['Я люблю ___.', '(папа)', 'AA', 'папу'], ['Я купил ___.', '(словарь)', 'ANO', 'словарь'], ['Я люблю ___.', '(дочь)', 'ANO', 'дочь'], ['Ты видишь ___ дом?', '(этот)', 'ANOADJ', 'этот']] },
+
+prepend: { title: 'Prepositional ending', l: 5, blurb: 'в городе, в аудитории, в тетради, в саду, в новом…', start: 'p0', nodes: {
+  p0: { q: 'What kind of word is it?', o: [['A noun', 'город, аудитория, тетрадь', 'p1'], ['An adjective, ordinal or possessive', 'новый, третий, мой, наш', 'p4', 13], ['A personal pronoun', 'я, он, она…', 'PPRON', 12]] },
+  p1: { q: 'Does it end in -ия, -ие or -ий?', o: [['Yes', 'аудитория, здание, Василий', 'PII'], ['No', '', 'p2']] },
+  p2: { q: 'Is it a feminine noun ending in -ь?', o: [['Yes', 'тетрадь, площадь, дочь', 'PI'], ['No', '', 'p3']] },
+  p3: { q: 'Is it one of the special -у nouns AND does it mean location (в / на)?', hint: 'сад, лес, мост, шкаф, угол, берег, пол, аэропорт, год (в этом году)', o: [['Yes', 'в саду, на мосту', 'PU', 12], ['No', 'everything else', 'PE']] },
+  p4: { q: 'What gender / number is the noun?', o: [['Masculine or neuter', 'дом, окно', 'p5'], ['Feminine', 'квартира, комната', 'p6'], ['Plural', 'дома, квартиры', 'PPL', 30]] },
+  p5: { q: 'Which word is it?', o: [['мой / твой / свой', '', 'PMOJ'], ['наш / ваш', '', 'PNASH'], ['A soft adjective (синий, последний) or ж/ш/ч/щ with the stress on the stem (хороший)', '', 'PEM'], ['Any other adjective, ordinal or этот', 'новый, большой, пятый, этот', 'POM']] },
+  p6: { q: 'Which word is it?', o: [['мой / твой / наш / ваш', '', 'PMOJF'], ['A soft adjective (синий, последний) or ж/ш/ч/щ with the stress on the stem (хороший)', '', 'PEJ'], ['Any other adjective, ordinal or эта', 'новая, большая, третья*', 'POJ']] },
+  PE: { leaf: 1, t: '-е (most nouns)', b: 'Replace the last vowel with -е or add it: город → в <b>городе</b>, улица → на <b>улице</b>, окно → на <b>окне</b>, Москва → в <b>Москве</b>, музей → в <b>музее</b>.', ex: ['Мы живём в <b>городе</b>.', 'Он на <b>работе</b>.'], dont: ['First check the -ия / -ие / -ь exceptions.'], rule: 'prep5' },
+  PII: { leaf: 1, t: '-ии', b: '-ия / -ие / -ий → <b>-ии</b>: аудитория → в <b>аудитории</b>, здание → в <b>здании</b>, Россия → в <b>России</b>.', ex: ['Мы в <b>аудитории</b>.', 'Он живёт в <b>России</b>.'], dont: ['Never “в Россие”.'], rule: 'prep5' },
+  PI: { leaf: 1, t: '-и (feminine -ь)', b: 'тетрадь → в <b>тетради</b>, площадь → на <b>площади</b>, мать → о <b>матери</b>, дочь → о <b>дочери</b>.', ex: ['Слово в <b>тетради</b>.', 'Мы на <b>площади</b>.'], dont: ['Masculine -ь nouns take -е: словарь → в словаре.'], rule: 'prep5' },
+  PU: { leaf: 1, t: '-у (stressed)', b: 'With в / на meaning location: в <b>саду</b>, в <b>лесу</b>, на <b>мосту</b>, в <b>шкафу</b>, в <b>углу</b>, на <b>берегу</b>, на <b>полу</b>, в <b>аэропорту</b>, в этом <b>году</b>.', ex: ['Дети в <b>саду</b>.', 'Книги в <b>шкафу</b>.'], dont: ['After о (about) use -е: о лесе, о саде.'], rule: 'prepu12' },
+  PPRON: { leaf: 1, t: 'Pronouns', b: '<table><tr><td>я → обо мне</td><td>мы → о нас</td></tr><tr><td>ты → о тебе</td><td>вы → о вас</td></tr><tr><td>он, оно → о нём</td><td>они → о них</td></tr><tr><td>она → о ней</td><td></td></tr></table>', ex: ['Он думает <b>о ней</b>.', 'Говорите <b>обо мне</b>?'], dont: ['обо only with мне.', 'в нём, на ней (location) work the same way.'], rule: 'prpro12' },
+  POM: { leaf: 1, t: '-ом', b: 'в <b>новом</b> доме, на <b>пятом</b> этаже, в <b>большом</b> городе, в <b>этом</b> году.', ex: ['Я живу в <b>новом</b> доме.'], dont: ['третий → на третьем (soft).'], rule: 'prepadj13' },
+  PEM: { leaf: 1, t: '-ем', b: 'в <b>синем</b> доме, в <b>последнем</b> вагоне, о <b>хорошем</b> фильме, на <b>третьем</b> этаже.', ex: ['Мы говорили о <b>хорошем</b> фильме.'], dont: ['Stress on the ending after ж/ш keeps -ом: в большом.'], rule: 'prepadj13' },
+  PMOJ: { leaf: 1, t: 'моём, твоём, своём', b: 'в <b>моём</b> доме, в <b>твоём</b> городе.', ex: ['В <b>моём</b> городе есть музей.'], dont: ['его / её / их never change: в его доме.'], rule: 'prepadj13' },
+  PNASH: { leaf: 1, t: 'нашем, вашем', b: 'в <b>нашем</b> городе, в <b>вашем</b> доме.', ex: ['В <b>нашем</b> городе тепло.'], dont: [], rule: 'prepadj13' },
+  POJ: { leaf: 1, t: '-ой', b: 'в <b>новой</b> квартире, в <b>большой</b> комнате, на <b>этой</b> улице. *третья → в <b>третьей</b>.', ex: ['Мы живём в <b>новой</b> квартире.'], dont: ['The noun takes -е: в новой квартире.'], rule: 'prepadj13' },
+  PEJ: { leaf: 1, t: '-ей', b: 'в <b>синей</b> машине, в <b>последней</b> комнате, в <b>хорошей</b> школе.', ex: ['Она в <b>синей</b> машине.'], dont: [], rule: 'prepadj13' },
+  PMOJF: { leaf: 1, t: 'моей, твоей, нашей, вашей', b: 'в <b>моей</b> комнате, в <b>нашей</b> школе.', ex: ['В <b>нашей</b> квартире три комнаты.'], dont: [], rule: 'prepadj13' },
+  PPL: { leaf: 1, t: 'Plural: -ах / -ях, adjectives -ых / -их', b: 'в новых домах, о моих друзьях.', ex: ['Мы были в <b>больших</b> городах.'], dont: [], rule: 'prpl30' } },
+ items: [['Я живу в ___.', '(город)', 'PE', 'городе'], ['Мы в ___.', '(аудитория)', 'PII', 'аудитории'], ['Слово в ___.', '(тетрадь)', 'PI', 'тетради'], ['Дети гуляют в ___.', '(сад)', 'PU', 'саду'],
+   ['Он живёт в ___ доме.', '(новый)', 'POM', 'новом'], ['Мы говорим ___.', '(о + она)', 'PPRON', 'о ней'], ['Я живу на ___ этаже.', '(третий)', 'PEM', 'третьем'], ['В ___ городе есть парк.', '(наш)', 'PNASH', 'нашем'],
+   ['Она работает в ___ школе.', '(хороший)', 'PEJ', 'хорошей'], ['Он живёт в ___.', '(Россия)', 'PII', 'России'], ['Книга на ___.', '(стол)', 'PE', 'столе'], ['Мы живём в ___ квартире.', '(мой)', 'PMOJF', 'моей']] },
+
+adjnom: { title: 'Adjective endings (dictionary form)', l: 5, blurb: 'новый / новая / новое / новые, синий, большой, хороший', start: 'n0', nodes: {
+  n0: { q: 'What gender / number is the noun?', o: [['Masculine', 'дом, брат', 'n1'], ['Feminine', 'книга, комната', 'n2'], ['Neuter', 'окно, море', 'n3'], ['Plural', 'дома, книги', 'n4']] },
+  n1: { q: 'Which describes the adjective?', o: [['The stress falls on the ending', 'большой, молодой, какой', 'NOJ'], ['Soft: the stem ends in a soft н (синий, последний, летний)', '', 'NIJ'], ['The stem ends in к, г, х, ж, ш, ч, щ (stress on the stem)', 'русский, маленький, хороший', 'NIJ'], ['Any other', 'новый, красивый, старый', 'NYJ']] },
+  n2: { q: 'Is it a soft adjective (синий, последний)?', o: [['Yes', '', 'NJAJA'], ['No', 'новый, большой, хороший', 'NAJA']] },
+  n3: { q: 'Which describes the adjective?', o: [['Soft (синий), or ж/ш/ч/щ with stress on the stem (хороший)', '', 'NEE'], ['Any other', 'новый, большой', 'NOE']] },
+  n4: { q: 'Which describes the adjective?', o: [['Soft (синий), or the stem ends in к, г, х, ж, ш, ч, щ', 'синие, русские, хорошие', 'NIE'], ['Any other', 'новые, красивые', 'NYE']] },
+  NOJ: { leaf: 1, t: '-ой', b: '<b>большой</b> дом, <b>молодой</b> человек, <b>какой</b>?', ex: ['Это <b>большой</b> город.'], dont: ['Only when the ending is stressed.'], rule: 'adj5' },
+  NIJ: { leaf: 1, t: '-ий', b: '<b>синий</b>, <b>последний</b>, <b>русский</b>, <b>маленький</b>, <b>хороший</b> (the 7-letter rule bans ы after к, г, х, ж, ш, ч, щ).', ex: ['Это <b>хороший</b> день.'], dont: [], rule: 'adj5' },
+  NYJ: { leaf: 1, t: '-ый', b: '<b>новый</b>, <b>красивый</b>, <b>старый</b>, <b>интересный</b>.', ex: ['Это <b>новый</b> дом.'], dont: [], rule: 'adj5' },
+  NAJA: { leaf: 1, t: '-ая', b: '<b>новая</b>, <b>большая</b>, <b>хорошая</b>, <b>русская</b>.', ex: ['Это <b>новая</b> квартира.'], dont: ['ая after ж/ш/к is fine: хорошая, русская.'], rule: 'adj5' },
+  NJAJA: { leaf: 1, t: '-яя', b: '<b>синяя</b>, <b>последняя</b>, <b>летняя</b>.', ex: ['Это <b>синяя</b> рубашка.'], dont: [], rule: 'adj5' },
+  NOE: { leaf: 1, t: '-ое', b: '<b>новое</b>, <b>большое</b>, <b>русское</b>.', ex: ['Это <b>большое</b> окно.'], dont: [], rule: 'adj5' },
+  NEE: { leaf: 1, t: '-ее', b: '<b>синее</b>, <b>последнее</b>, <b>хорошее</b>.', ex: ['Это <b>синее</b> море.'], dont: [], rule: 'adj5' },
+  NIE: { leaf: 1, t: '-ие', b: '<b>синие</b>, <b>русские</b>, <b>маленькие</b>, <b>хорошие</b>, <b>большие</b>.', ex: ['Это <b>хорошие</b> студенты.'], dont: ['большой → большие (ш bans ы).'], rule: 'adj5' },
+  NYE: { leaf: 1, t: '-ые', b: '<b>новые</b>, <b>красивые</b>, <b>молодые</b>.', ex: ['Это <b>новые</b> дома.'], dont: [], rule: 'adj5' } },
+ items: [['Это ___ дом.', '(большой)', 'NOJ', 'большой'], ['Это ___ рубашка.', '(синий)', 'NJAJA', 'синяя'], ['Это ___ окно.', '(хороший)', 'NEE', 'хорошее'], ['Это ___ студенты.', '(русский)', 'NIE', 'русские'],
+   ['Это ___ квартира.', '(новый)', 'NAJA', 'новая'], ['Это ___ дома.', '(старый)', 'NYE', 'старые'], ['Это ___ мальчик.', '(маленький)', 'NIJ', 'маленький'], ['Это ___ море.', '(синий)', 'NEE', 'синее']] },
+
+motion: { title: 'Verbs of motion', l: 9, blurb: 'ходить / идти, ездить / ехать, летать / лететь, плавать / плыть', start: 'm0', nodes: {
+  m0: { q: 'How is the person moving?', o: [['On foot', 'walk', 'mF'], ['By vehicle (car, bus, train)', 'drive / ride', 'mV', 11], ['Flying', 'plane, bird', 'mA', 13], ['Swimming or by boat', 'swim, sail', 'mS', 13]] } ,
+  ...Object.fromEntries([['F', 'идти', 'ходить'], ['V', 'ехать', 'ездить'], ['A', 'лететь', 'летать'], ['S', 'плыть', 'плавать']].map(([k, u, m]) => ['m' + k, { q: `Which describes the trip? (${u} or ${m})`, o: [
+    ['One trip in one direction, happening at that moment', 'right now, on the way, “when I was going…”', 'U' + k], ['A regular or repeated trip', 'every day, often, usually, on Saturdays', 'M' + k],
+    ['A round trip in the past: went there and came back', 'Вчера я ___ в кино.', 'R' + k], ['Moving around with no one direction, or the ability to', 'He can walk now; I swim well; walking around the park', 'M' + k],
+    ['A plan for the future', 'Tomorrow I’m going to Moscow.', 'U' + k]] }])) },
+ items: [['Смотри, Иван ___ в магазин!', '(on foot, right now)', 'UF', 'идёт', ['идёт', 'ходит']], ['Каждый день я ___ на работу пешком.', '', 'MF', 'хожу', ['хожу', 'иду']], ['Вчера мы ___ в театр.', '(on foot; came back)', 'RF', 'ходили', ['ходили', 'шли']],
+   ['Сейчас мы ___ в Москву на поезде.', '', 'UV', 'едем', ['едем', 'ездим']], ['Летом мы ___ на море.', '(by car, every summer)', 'MV', 'ездим', ['ездим', 'едем']], ['Самолёт ___ в Москву.', '(right now)', 'UA', 'летит', ['летит', 'летает']],
+   ['Я хорошо ___.', '(I can swim)', 'MS', 'плаваю', ['плаваю', 'плыву']], ['Завтра я ___ в Сочи.', '(by plane)', 'UA', 'лечу', ['лечу', 'летаю']], ['В прошлом году мы ___ в Мексику.', '(by plane; came back)', 'RA', 'летали', ['летали', 'летели']], ['Теплоход ___ на юг.', '(right now)', 'US', 'плывёт', ['плывёт', 'плавает']]] },
+
+vna: { title: 'в or на?', l: 5, blurb: 'в магазине, на почте, на концерте, в парке', start: 'v0', nodes: {
+  v0: { q: 'What kind of place is it?', o: [['An event or activity', 'концерт, урок, работа, экскурсия, лекция', 'VNA_EV'], ['An open area', 'улица, площадь, стадион, пляж, рынок', 'VNA_OPEN'], ['One of the fixed на-words', 'почта, вокзал, завод, станция, этаж, Урал', 'VNA_FIX'],
+    ['A building, room, city, country or enclosed space', 'магазин, школа, банк, парк, кино, Москва, Россия', 'VV'], ['A vehicle', 'автобус, машина, поезд', 'v1', 12]] },
+  v1: { q: 'Do you mean “by” (how you travel) or “inside”?', o: [['By: how I travel', 'Я еду на автобусе.', 'VNA_VEH'], ['Inside it', 'В автобусе много людей.', 'VV']] },
+  ...Object.fromEntries([['VNA_EV', 'на: events and activities', 'на <b>концерте</b>, на <b>уроке</b>, на <b>работе</b>, на <b>лекции</b>, на <b>экскурсии</b>'], ['VNA_OPEN', 'на: open areas', 'на <b>улице</b>, на <b>площади</b>, на <b>стадионе</b>, на <b>пляже</b>, на <b>рынке</b>'],
+    ['VNA_FIX', 'на: words you just have to learn', 'на <b>почте</b>, на <b>вокзале</b>, на <b>заводе</b>, на <b>станции</b>, на <b>этаже</b>, на <b>Урале</b>'], ['VNA_VEH', 'на: by vehicle', 'на <b>автобусе</b>, на <b>машине</b>, на <b>поезде</b>, на <b>метро</b>']]
+    .map(([k, t, b]) => [k, { leaf: 1, t, b, ex: [], dont: ['Same preposition for где and куда: на работе (where) / на работу (where to).', 'The way back mirrors it: с работы, с почты (Lesson 18).'], next: [['Which case after it?', 'case']], rule: 'vna13', ans: 'на' }])),
+  VV: { leaf: 1, t: 'в: inside a building or area with borders', b: 'в <b>магазине</b>, в <b>школе</b>, в <b>парке</b>, в <b>кино</b>, в <b>Москве</b>, в <b>автобусе</b> (inside).', ex: [], dont: ['Same preposition for где and куда: в школе / в школу.', 'The way back mirrors it: из школы (Lesson 18).', 'во before some clusters: во Франции, во вторник.'], next: [['Which case after it?', 'case']], rule: 'vna13', ans: 'в' } },
+ items: [['Он работает ___ заводе.', '', 'VNA_FIX', 'на', ['в', 'на']], ['Мы были ___ концерте.', '', 'VNA_EV', 'на', ['в', 'на']], ['Она ___ магазине.', '', 'VV', 'в', ['в', 'на']], ['Дети ___ стадионе.', '', 'VNA_OPEN', 'на', ['в', 'на']],
+   ['Мы гуляем ___ парке.', '', 'VV', 'в', ['в', 'на']], ['Письмо ___ почте.', '', 'VNA_FIX', 'на', ['в', 'на']], ['Я еду ___ автобусе.', '(by bus)', 'VNA_VEH', 'на', ['в', 'на']], ['Он сейчас ___ уроке.', '', 'VNA_EV', 'на', ['в', 'на']], ['Они живут ___ Москве.', '', 'VV', 'в', ['в', 'на']], ['Мы встретились ___ площади.', '', 'VNA_OPEN', 'на', ['в', 'на']]] },
+
+aspect: { title: 'Past tense: which aspect?', l: 8, blurb: 'читал or прочитал, делал or сделал', start: 's0', nodes: {
+  s0: { q: 'What are you saying about the action?', o: [['It was finished, with a result (done, got it)', 'Я прочитал книгу — вот она.', 'SPF'], ['It went on for a while (process, duration)', 'долго, весь вечер, два часа', 'SIM1'],
+    ['It happened regularly or many times', 'часто, каждый день, всегда, обычно', 'SIM2'], ['I’m just naming the activity, not the result', 'Что ты делал вчера? — Читал.', 'SIM3'], ['A chain of finished actions, one after another', 'Он пришёл, поужинал и лёг спать.', 'SPF2']] },
+  SPF: { leaf: 1, t: 'Perfective: one result', b: 'прочитал, написал, сделал, купил, посмотрел.', ex: ['Я <b>написал</b> письмо. Вот оно.', 'Она <b>купила</b> платье.'], dont: ['Signal words: уже, наконец, сразу.'], rule: 'asp8', ans: 'perf' },
+  SPF2: { leaf: 1, t: 'Perfective: a sequence', b: 'Each action finishes before the next starts.', ex: ['Он <b>пришёл</b>, <b>поужинал</b> и <b>лёг</b> спать.'], dont: ['Two actions at the same time = both imperfective: Он читал, а она писала.'], rule: 'asp8', ans: 'perf' },
+  SIM1: { leaf: 1, t: 'Imperfective: process or duration', b: 'читал, писал, делал, смотрел.', ex: ['Я <b>читал</b> книгу весь вечер.', 'Он долго <b>писал</b> письмо.'], dont: ['Signal words: долго, весь день, два часа, когда…'], rule: 'asp8', ans: 'impf' },
+  SIM2: { leaf: 1, t: 'Imperfective: repeated', b: 'Habits and repeated actions are always imperfective.', ex: ['Мы часто <b>покупали</b> продукты там.'], dont: ['Signal words: часто, всегда, обычно, каждый день, иногда.'], rule: 'asp8', ans: 'impf' },
+  SIM3: { leaf: 1, t: 'Imperfective: naming the activity', b: 'When the result doesn’t matter, only the fact that you did it.', ex: ['Что ты <b>делал</b> вчера? — <b>Смотрел</b> телевизор.', 'Вы <b>читали</b> эту книгу?'], dont: [], rule: 'asp8', ans: 'impf' } },
+ items: [['Вчера я весь вечер ___ книгу.', '(читать / прочитать)', 'SIM1', 'читал', ['читал', 'прочитал']], ['Я уже ___ эту книгу.', '(читать / прочитать)', 'SPF', 'прочитал', ['читал', 'прочитал']], ['Мы часто ___ продукты в этом магазине.', '(покупать / купить)', 'SIM2', 'покупали', ['покупали', 'купили']],
+   ['Что ты ___ вчера?', '(делать / сделать)', 'SIM3', 'делал', ['делал', 'сделал']], ['Он пришёл домой, ___ и лёг спать.', '(ужинать / поужинать)', 'SPF2', 'поужинал', ['ужинал', 'поужинал']], ['Она ___ новое платье. Вот оно!', '(покупать / купить)', 'SPF', 'купила', ['покупала', 'купила']], ['Он долго ___ письмо.', '(писать / написать)', 'SIM1', 'писал', ['писал', 'написал']]] },
+
+time: { title: 'Telling time', l: 13, blurb: 'час, два часа, пять часов, в…, утра / вечера', start: 't0', nodes: {
+  t0: { q: 'Which number of hours?', o: [['1', 'just “час” — no один', 't1'], ['2, 3 or 4', '', 't2'], ['5 to 12', '', 't3']] },
+  ...Object.fromEntries([['1', 'H1', 'час'], ['2', 'H2', 'часа'], ['3', 'H5', 'часов']].map(([k, L, w]) => ['t' + k, { q: 'Is it “it’s … o’clock” or “at … o’clock”?', o: [['It’s … (Сейчас …)', `Сейчас ${k === '1' ? 'час' : k === '2' ? 'два часа' : 'пять часов'}.`, L + 'N'], ['At … (В котором часу? / Во сколько?)', `в ${k === '1' ? 'час' : k === '2' ? 'два часа' : 'пять часов'}`, L + 'V']] }])),
+  ...Object.fromEntries([['H1', 'час', 'час'], ['H2', 'часа', 'два часа'], ['H5', 'часов', 'пять часов']].flatMap(([k, w, s]) => [[k + 'N', { leaf: 1, t: `${w} — no preposition`, b: `Сейчас <b>${s}</b>.`, ex: [], dont: ['Add утра (4–11), дня (12–4 p.m.), вечера (5–11 p.m.), ночи (midnight–3) if needed.', 'Который час? / Сколько времени? = What time is it?'], rule: 'time13' }],
+    [k + 'V', { leaf: 1, t: `в + ${w}`, b: `Урок начинается <b>в ${s}</b>.`, ex: [], dont: ['Add утра / дня / вечера / ночи if needed: в шесть часов вечера.', 'Во сколько? / В котором часу? = At what time?'], rule: 'time13' }]])) },
+ items: [['Сейчас три ___.', '(час)', 'H2N', 'часа'], ['Урок начинается в восемь ___.', '(час)', 'H5V', 'часов'], ['Сейчас ___.', '(1:00)', 'H1N', 'час'], ['Я встаю в шесть ___.', '(час)', 'H5V', 'часов'], ['Мы обедаем в ___.', '(1:00)', 'H1V', 'час'], ['Сейчас четыре ___.', '(час)', 'H2N', 'часа'], ['Он пришёл в два ___.', '(час)', 'H2V', 'часа']] },
+
+est: { title: 'есть or no есть', l: 11, blurb: 'У меня есть машина vs. У меня новая машина', start: 'e0', nodes: {
+  e0: { q: 'What does the sentence do?', o: [['Says whether something exists or someone has it at all', 'Do you have a car? Is there a pharmacy?', 'EYES'], ['Describes something we already know exists', 'what kind, which, how many, how much', 'ENO'],
+    ['Says “I am / he is …” (to be, present)', 'Я студент.', 'EBE'], ['Talks about eating', 'I eat, we eat', 'EEAT', 13]] },
+  EYES: { leaf: 1, t: 'Use есть', b: 'The question is about existence or possession itself.', ex: ['У тебя <b>есть</b> брат? — Да, <b>есть</b>.', 'Здесь <b>есть</b> аптека?'], dont: ['The thing stays Nominative: У меня есть машина.'], rule: 'est11', ans: 'есть' },
+  ENO: { leaf: 1, t: 'Leave есть out', b: 'We know it exists; the sentence is about its features or amount.', ex: ['У меня <b>новая</b> машина.', 'Какая у вас машина? — Синяя.', 'У неё много друзей.'], dont: ['Illnesses too: У меня грипп.'], rule: 'est11', ans: '— (no word)' },
+  EBE: { leaf: 1, t: 'No verb at all', b: 'Russian drops “to be” in the present.', ex: ['Я студент.', 'Он дома.'], dont: ['Past: был / была / было / были. Future: буду…'], rule: 'be1', ans: '— (no word)' },
+  EEAT: { leaf: 1, t: 'есть = to eat (irregular)', b: '<table><tr><td>я ем</td><td>мы едим</td></tr><tr><td>ты ешь</td><td>вы едите</td></tr><tr><td>он ест</td><td>они едят</td></tr></table>Past: ел, ела, ели.', ex: ['Что ты <b>ешь</b>?', 'Мы <b>едим</b> рыбу.'], dont: ['Don’t confuse едим (we eat) with едем (we ride).'], rule: 'est11' } },
+ items: [['– У тебя ___ брат? – Да.', '', 'EYES', 'есть', ['есть', '— (no word)']], ['У меня ___ новая машина.', '', 'ENO', '— (no word)', ['есть', '— (no word)']], ['Я ___ студент.', '', 'EBE', '— (no word)', ['есть', '— (no word)']], ['В городе ___ река?', '', 'EYES', 'есть', ['есть', '— (no word)']],
+   ['Какая у вас ___ машина?', '', 'ENO', '— (no word)', ['есть', '— (no word)']], ['Мы ___ рыбу.', '(есть — мы)', 'EEAT', 'едим'], ['Что ты ___?', '(есть — ты)', 'EEAT', 'ешь']] },
+
+adv: { title: 'холодный or холодно?', l: 9, blurb: 'adjective or adverb, русский or по-русски', start: 'd0', nodes: {
+  d0: { q: 'What does the word describe?', o: [['A noun (a person or thing)', 'холодная погода, хороший студент', 'DADJ'], ['How someone does something', 'говорит хорошо, пишет быстро', 'DADV'], ['The general situation, weather or how someone feels (no subject)', 'Сегодня холодно. Здесь тепло.', 'DIMP'], ['A language', 'по-русски or русский?', 'd1']] },
+  d1: { q: 'With which verb?', o: [['говорить, писать, читать, понимать', 'how you use it', 'DLANG'], ['знать, изучать, учить, любить', 'the language as a thing', 'DLANG2']] },
+  DADJ: { leaf: 1, t: 'Adjective: agrees with the noun', b: '<b>холодная</b> погода, <b>хороший</b> день, вода <b>холодная</b>.', ex: ['Сегодня <b>холодная</b> погода.'], dont: ['Check the noun’s gender.'], next: [['Adjective endings', 'adjnom']], rule: 'adj5' },
+  DADV: { leaf: 1, t: 'Adverb in -о', b: 'хороший → <b>хорошо</b>, быстрый → <b>быстро</b>, медленный → <b>медленно</b>.', ex: ['Он <b>хорошо</b> говорит.'], dont: [], rule: 'adv9' },
+  DIMP: { leaf: 1, t: 'Adverb in -о (impersonal)', b: 'Сегодня <b>холодно</b>. Летом <b>жарко</b>. В комнате <b>тепло</b>.', ex: ['На улице <b>холодно</b>.'], dont: ['No subject and no “it”: never “Это холодно” for weather.'], rule: 'imps9' },
+  DLANG: { leaf: 1, t: 'по-русски', b: 'Говорить / писать / читать / понимать <b>по-русски</b>, по-английски.', ex: ['Вы говорите <b>по-русски</b>?'], dont: ['No capital letter, with a hyphen.'], rule: 'adv9' },
+  DLANG2: { leaf: 1, t: 'русский язык', b: 'Знать / изучать / учить / любить <b>русский язык</b> (Accusative, unchanged).', ex: ['Я изучаю <b>русский язык</b>.'], dont: ['понимать can take either: понимаю по-русски / понимаю русский язык.'], rule: 'adv9' } },
+ items: [['Сегодня очень ___.', '(холодный)', 'DIMP', 'холодно', ['холодно', 'холодная']], ['Сегодня ___ погода.', '(холодный)', 'DADJ', 'холодная', ['холодно', 'холодная']], ['Он говорит ___.', '(хороший)', 'DADV', 'хорошо', ['хорошо', 'хороший']], ['Вы понимаете ___?', '(English)', 'DLANG', 'по-английски', ['по-английски', 'английский']],
+   ['Мы изучаем ___ язык.', '(Russian)', 'DLANG2', 'русский', ['по-русски', 'русский']], ['Летом здесь ___.', '(жаркий)', 'DIMP', 'жарко', ['жарко', 'жаркий']], ['Это ___ студент.', '(хороший)', 'DADJ', 'хороший', ['хорошо', 'хороший']]] },
+
+neg: { title: 'Negative words', l: 12, blurb: 'никто, никого, ничего, никогда, нигде, никуда', start: 'g0', nodes: {
+  g0: { q: 'What do you want to say?', o: [['Nobody does it (subject)', 'Nobody works here.', 'NKTO'], ['I see / know / love nobody (object)', 'I don’t know anybody.', 'NKOGO'], ['Nothing', 'I don’t understand anything.', 'NCH'], ['Never', 'He never smokes.', 'NKOG'], ['Nowhere: location (где?)', 'I haven’t been anywhere.', 'NGDE'], ['Nowhere: direction (куда?)', 'We aren’t going anywhere.', 'NKUDA']] },
+  ...Object.fromEntries([['NKTO', 'никто', 'Здесь <b>никто</b> не работает.'], ['NKOGO', 'никого', 'Я <b>никого</b> не знаю.'], ['NCH', 'ничего', 'Я <b>ничего</b> не понимаю.'], ['NKOG', 'никогда', 'Он <b>никогда</b> не курит.'], ['NGDE', 'нигде', 'Я <b>нигде</b> не был.'], ['NKUDA', 'никуда', 'Мы <b>никуда</b> не идём.']]
+    .map(([k, w, e]) => [k, { leaf: 1, t: w, b: e, ex: [], dont: ['Always add не before the verb.', 'Several negatives are fine: Никто никогда ничего не знает.'], rule: 'neg12', ans: w }])) },
+ items: [['Я ___ не знаю.', '(nobody)', 'NKOGO', 'никого'], ['___ не работает в субботу.', '(Nobody)', 'NKTO', 'никто'], ['Она ___ не курит.', '(never)', 'NKOG', 'никогда'], ['Мы ___ не ездим.', '(nowhere)', 'NKUDA', 'никуда'], ['Я ___ не понимаю.', '(nothing)', 'NCH', 'ничего'], ['Я ___ не был.', '(nowhere)', 'NGDE', 'нигде']] },
+
+pron: { title: 'Pronoun forms', l: 7, blurb: 'он / его / у него / о нём', start: 'r0', nodes: {
+  r0: { q: 'What is the pronoun doing?', o: [['It’s the subject', 'Он читает.', 'RNOM'], ['It’s the direct object (no preposition)', 'Я знаю его.', 'RACC'], ['After у (has / at someone’s)', 'у него, у неё', 'RU', 11], ['After о (about) or в / на (location)', 'о нём, в ней', 'RPREP', 12], ['Showing ownership (his / her / their)', 'его дом', 'RPOSS', 2]] },
+  RNOM: { leaf: 1, t: 'Subject forms', b: 'я, ты, он, она, оно, мы, вы, они.', ex: ['<b>Она</b> студентка.'], dont: [], rule: 'pron2' },
+  RACC: { leaf: 1, t: 'Accusative', b: 'меня, тебя, его, её, нас, вас, их.', ex: ['Я люблю <b>тебя</b>.', 'Мы видим <b>их</b>.'], dont: ['With a preposition add н-: на него, про неё.'], rule: 'acc7' },
+  RU: { leaf: 1, t: 'у меня, у него…', b: 'у меня, у тебя, <b>у него</b>, <b>у неё</b>, у нас, у вас, <b>у них</b>.', ex: ['<b>У него</b> есть машина.'], dont: ['Third person gets н- after any preposition: у него, not у его.'], rule: 'est11' },
+  RPREP: { leaf: 1, t: 'Prepositional', b: 'обо мне, о тебе, <b>о нём</b>, <b>о ней</b>, о нас, о вас, <b>о них</b>.', ex: ['Мы говорим <b>о нём</b>.'], dont: ['обо only with мне.'], rule: 'prpro12' },
+  RPOSS: { leaf: 1, t: 'его / её / их never change', b: 'his = <b>его</b>, her = <b>её</b>, their = <b>их</b>, in every case and gender, and they never take н-.', ex: ['Я был в <b>его</b> доме.', 'Это <b>её</b> книги.'], dont: ['у его брата (his brother’s) — no н- because it means “his”.'], rule: 'poss2' } },
+ items: [['Я хорошо знаю ___.', '(он)', 'RACC', 'его'], ['У ___ есть сестра.', '(он)', 'RU', 'него'], ['Мы часто говорим ___.', '(о + она)', 'RPREP', 'о ней'], ['Это ___ машина.', '(his)', 'RPOSS', 'его'], ['Ты видишь ___?', '(я)', 'RACC', 'меня'], ['У ___ нет времени.', '(они)', 'RU', 'них'], ['Мы думаем ___.', '(о + они)', 'RPREP', 'о них']] },
+};
+
+// Motion-verb results are generated: one per way of moving × (one trip now / regular / round trip).
+(() => {
+  const V = { F: ['идти', 'иду, идёшь, идёт, идём, идёте, идут', 'шёл, шла, шли', 'ходить', 'хожу, ходишь, ходит, ходим, ходите, ходят', 'ходил, ходила, ходили', 'on foot'],
+    V: ['ехать', 'еду, едешь, едет, едем, едете, едут', 'ехал, ехала, ехали', 'ездить', 'езжу, ездишь, ездит, ездим, ездите, ездят', 'ездил, ездила, ездили', 'by vehicle'],
+    A: ['лететь', 'лечу, летишь, летит, летим, летите, летят', 'летел, летела, летели', 'летать', 'летаю, летаешь, летает, летаем, летаете, летают', 'летал, летала, летали', 'flying'],
+    S: ['плыть', 'плыву, плывёшь, плывёт, плывём, плывёте, плывут', 'плыл, плыла, плыли', 'плавать', 'плаваю, плаваешь, плавает, плаваем, плаваете, плавают', 'плавал, плавала, плавали', 'swimming / by boat'] };
+  const N = GF.motion.nodes;
+  for (const [k, [u, up, upa, m, mp, mpa, how]] of Object.entries(V)) {
+    N['U' + k] = { leaf: 1, t: `${u}: one trip, in progress`, b: `<b>${u}</b> (${how}), one direction, at that moment or as a plan.<table><tr><td>present</td><td>${up}</td></tr><tr><td>past</td><td>${upa}</td></tr></table>`,
+      ex: [`Сейчас я <b>${up.split(', ')[0]}</b> домой.`, `Когда я <b>${upa.split(', ')[0]}</b> домой, я видел друга.`], dont: ['A plan works in the present: Завтра я ' + up.split(', ')[0] + ' в Москву.', 'Past = “was on the way” (and maybe never arrived); for “went and came back” use ' + m + '.', 'Set off / will go: по' + (u === 'идти' ? 'йти (пошёл, пойду)' : u) + ' (Lesson 19).'], rule: 'fly13' };
+    N['M' + k] = { leaf: 1, t: `${m}: regular trips, back and forth, ability`, b: `<b>${m}</b> (${how}): habits, many trips, moving around, or being able to.<table><tr><td>present</td><td>${mp}</td></tr><tr><td>past</td><td>${mpa}</td></tr></table>`,
+      ex: [`Каждый день я <b>${mp.split(', ')[0]}</b> на работу.`], dont: ['Signal words: каждый день, часто, обычно, по субботам, всегда.', 'Не + imperative for “don’t go”: не ' + (m === 'ходить' ? 'ходи' : m === 'ездить' ? 'езди' : m === 'летать' ? 'летай' : 'плавай') + '!'], rule: k === 'F' || k === 'V' ? 'mot11' : 'fly13' };
+    N['R' + k] = { leaf: 1, t: `${m} in the past: went and came back`, b: `A finished round trip = past of <b>${m}</b>: ${mpa}. It means the same as “был там”.`, ex: [`Вчера я <b>${mpa.split(', ')[0]}</b> в кино (= был в кино).`], dont: [`${upa.split(', ')[0]} would mean “was on my way”.`], rule: k === 'F' || k === 'V' ? 'mot11' : 'fly13' };
+  }
+})();
+
+const gfChart = id => GF[id];
+const gfOk = o => (o[3] || 0) <= curLesson();
+const gfCharts = () => Object.entries(GF).filter(([k, c]) => k !== 'hub' && c.l <= curLesson());
+function gfReach(c, from, target, seen = new Set()) {
+  if (from === target) return true; if (seen.has(from)) return false; seen.add(from);
+  const n = c.nodes[from]; if (!n || n.leaf) return false;
+  return n.o.some(o => gfOk(o) && !o[2].startsWith('@') && gfReach(c, o[2], target, seen));
+}
+const GFRULE = {}; for (const [cid, c] of Object.entries(GF)) for (const n of Object.values(c.nodes)) if (n.rule && cid !== 'hub') (GFRULE[n.rule] = GFRULE[n.rule] || new Set()).add(cid);
+function gfOpen(c, extra = {}) { state.gf = Object.assign({ c, path: [GF[c].start], mode: 'walk' }, extra); state.view = 'gflow'; render(); window.scrollTo({ top: 0 }); }
+
+function gfQuestion(c, id, picks = {}) {
+  const n = c.nodes[id];
+  return `<div class="gf-q"><div class="gf-qt">${esc(n.q)}</div>${n.hint ? `<p class="small muted">${esc(n.hint)}</p>` : ''}
+    <div class="gf-opts">${n.o.map((o, i) => { const lock = !gfOk(o), cls = picks[i] || '';
+      return `<button class="gf-opt ${cls}" data-o="${i}" ${lock ? 'disabled' : ''}><b>${esc(o[0])}</b>${o[1] ? `<span>${esc(o[1])}</span>` : ''}${lock ? `<span class="gf-lock">Lesson ${o[3]}</span>` : o[2].startsWith('@') ? `<span class="gf-jump">opens: ${esc(GF[o[2].slice(1)].title)} →</span>` : ''}</button>`; }).join('')}</div></div>`;
+}
+function gfLeaf(c, id, short) {
+  const n = c.nodes[id];
+  return `<div class="gf-leaf"><div class="eyebrow">Result</div><h2>${esc(n.t)}</h2><div class="rule grx">${n.b}</div>
+    ${n.ex?.length ? `<div class="gf-ex">${n.ex.map(e => `<div class="ru">${e}</div>`).join('')}</div>` : ''}
+    ${n.dont?.length ? `<div class="gf-dont"><b>Don’t forget</b><ul>${n.dont.map(d => `<li>${esc(d)}</li>`).join('')}</ul></div>` : ''}
+    ${short ? '' : `<div class="actions">${(n.next || []).filter(([, k]) => GF[k] && GF[k].l <= curLesson()).map(([t, k]) => `<button class="btn" data-gfgo="${k}">${esc(t)} →</button>`).join('')}
+      ${n.rule && GRULE[n.rule] && GRULE[n.rule].l <= curLesson() ? `<button class="btn ghost" data-gfrule="${n.rule}">Practice this rule</button>` : ''}<button class="btn ghost" data-gfre="1">Start over</button></div>`}</div>`;
+}
+function gfMap(c, id, depth = 0, seen = []) {
+  const n = c.nodes[id];
+  if (!n) return '';
+  if (n.leaf) return `<button class="gf-mnode leaf" data-gfat="${id}">${esc(n.t)}</button>`;
+  if (seen.includes(id)) return `<button class="gf-mnode" data-gfat="${id}">↺ ${esc(n.q)}</button>`;
+  return `<button class="gf-mnode q" data-gfat="${id}">${esc(n.q)}</button><ul class="gf-tree">${n.o.map(o => {
+    const lock = !gfOk(o), to = o[2];
+    return `<li class="${lock ? 'lock' : ''}"><div class="gf-edge">${esc(o[0])}${lock ? ` · Lesson ${o[3]}` : ''}</div>${lock ? '' : to.startsWith('@') ? `<button class="gf-mnode jump" data-gfgo="${to.slice(1)}">→ ${esc(GF[to.slice(1)].title)}</button>` : gfMap(c, to, depth + 1, seen.concat(id))}</li>`; }).join('')}</ul>`;
+}
+function viewGflow() {
+  const S = state.gf, c = GF[S.c], items = (c.items || []).filter(it => gfReach(c, c.start, it[2]));
+  const tabs = `<div class="chips gf-tabs">${[['walk', 'Walk through it'], ['map', 'See the whole chart'], ...(items.length ? [['try', `Try it with sentences (${Math.min(6, items.length)})`]] : [])].map(([m, t]) => `<button class="chip" aria-pressed="${S.mode === m}" data-gfm="${m}">${t}</button>`).join('')}</div>`;
+  const head = `<div class="actions" style="margin-top:20px"><button class="btn ghost sm" id="gfback">← Grammar</button>${S.c !== 'hub' ? `<button class="btn ghost sm" data-gfgo="hub">Which chart do I need?</button>` : ''}</div>
+    <div class="eyebrow" style="margin-top:18px">Decision chart</div><h1>${esc(c.title)}</h1>${tabs}`;
+  if (S.mode === 'map') return head + `<p class="small muted">Tap any box to walk from there. Grey branches unlock in later lessons.</p><div class="gf-map">${gfMap(c, c.start)}</div>`;
+  if (S.mode === 'try') return head + gfTryView(c);
+  const trail = S.path.slice(0, -1).map((id, i) => { const n = c.nodes[id], o = n.o[S.picks?.[i] ?? n.o.findIndex(o => o[2] === S.path[i + 1])];
+    return `<button class="gf-step" data-gfback="${i}"><span>${esc(n.q)}</span><b>${esc(o ? o[0] : '')}</b></button><div class="gf-arrow">↓</div>`; }).join('');
+  const cur = S.path[S.path.length - 1];
+  return head + `<div class="gf-trail">${trail}</div>${c.nodes[cur].leaf ? gfLeaf(c, cur) : gfQuestion(c, cur)}
+    ${S.path.length > 1 && !c.nodes[cur].leaf ? `<div class="actions"><button class="btn ghost sm" data-gfback="${S.path.length - 2}">← Back a step</button></div>` : ''}`;
+}
+function gfTryView(c) {
+  const S = state.gf, T = S.tr;
+  if (!T) return '';
+  if (T.i >= T.items.length) {
+    const st = LS.get('gfl', {})[S.c] || { n: 0, ok: 0 };
+    return `<div class="sheet"><h2>${T.score} of ${T.items.length} worked through without a slip</h2><p class="muted">${T.steps} decision steps right the first time out of ${T.total}. ${T.final} of ${T.items.length} final answers right.</p>
+      <p class="small muted">All-time on this chart: ${st.ok} of ${st.n} sentences clean.</p><div class="actions"><button class="btn" data-gfm="try">Another set</button><button class="btn ghost" data-gfm="walk">Walk the chart</button></div></div>`;
+  }
+  const it = T.items[T.i], [p, cue] = it;
+  const sentence = `<div class="gf-sent"><div class="eyebrow">Sentence ${T.i + 1} of ${T.items.length}</div><div class="prompt">${esc(p).replace('___', '<span class="gap">&nbsp;</span>')} <span class="hint">${esc(cue)}</span></div></div>`;
+  const trail = T.path.slice(0, -1).map((id, i) => `<div class="gf-step done"><span>${esc(c.nodes[id].q)}</span><b>${esc(c.nodes[id].o[T.chosen[i]][0])}</b></div><div class="gf-arrow">↓</div>`).join('');
+  const cur = T.path[T.path.length - 1];
+  if (!c.nodes[cur].leaf) return sentence + `<div class="gf-trail">${trail}</div>${gfQuestion(c, cur, T.marks)}<div id="gffb">${T.msg || ''}</div>`;
+  const ch = it[4], final = T.final_done;
+  return sentence + `<div class="gf-trail">${trail}</div>${gfLeaf(c, cur, true)}
+    <div class="gf-final"><div class="gf-qt">So the answer is…</div>${ch ? `<div class="opts">${ch.map(o => `<button class="opt ru" data-gfa="${esc(o)}" ${final ? 'disabled' : ''}>${esc(o)}</button>`).join('')}</div>`
+      : `${answerBox()}<div class="actions"><button class="btn" id="gfchk" ${final ? 'disabled' : ''}>Check</button></div>`}<div id="gffb">${T.msg || ''}</div>
+    ${final ? `<div class="actions"><button class="btn" id="gfnext">Next sentence</button></div>` : ''}</div>`;
+}
+function gfStartTry() { const c = GF[state.gf.c]; const ok = c.items.filter(it => gfReach(c, c.start, it[2])); state.gf.tr = { items: pick(ok, Math.min(6, ok.length)), i: 0, score: 0, steps: 0, total: 0, final: 0 }; gfTryReset(); }
+function gfTryReset() { const T = state.gf.tr; Object.assign(T, { path: [GF[state.gf.c].start], chosen: [], marks: {}, slip: false, msg: '', final_done: false }); }
+function wireGflow(el) {
+  const S = state.gf, c = GF[S.c];
+  $('#gfback', el).onclick = () => { state.view = 'gtab'; render(); };
+  el.querySelectorAll('[data-gfm]').forEach(b => b.onclick = () => { S.mode = b.dataset.gfm; if (S.mode === 'try') gfStartTry(); render(); });
+  el.querySelectorAll('[data-gfgo]').forEach(b => b.onclick = () => gfOpen(b.dataset.gfgo));
+  el.querySelectorAll('[data-gfrule]').forEach(b => b.onclick = () => startSection('gtab', { rules: [b.dataset.gfrule], n: 10 }));
+  el.querySelectorAll('[data-gfre]').forEach(b => b.onclick = () => { S.path = [c.start]; S.picks = []; render(); });
+  el.querySelectorAll('[data-gfat]').forEach(b => b.onclick = () => { S.mode = 'walk'; S.path = [b.dataset.gfat]; S.picks = []; render(); window.scrollTo({ top: 0 }); });
+  el.querySelectorAll('[data-gfback]').forEach(b => b.onclick = () => { const i = +b.dataset.gfback; S.path = S.path.slice(0, i + 1); S.picks = (S.picks || []).slice(0, i); render(); });
+  if (S.mode === 'walk') el.querySelectorAll('.gf-opt').forEach(b => b.onclick = () => {
+    const o = c.nodes[S.path[S.path.length - 1]].o[+b.dataset.o];
+    if (o[2].startsWith('@')) return gfOpen(o[2].slice(1));
+    S.picks = (S.picks || []).concat(+b.dataset.o); S.path = S.path.concat(o[2]); render();
+  });
+  if (S.mode === 'try' && S.tr && S.tr.i < S.tr.items.length) {
+    const T = S.tr, it = T.items[T.i], target = it[2];
+    el.querySelectorAll('.gf-opt').forEach(b => b.onclick = () => {
+      const k = +b.dataset.o, node = c.nodes[T.path[T.path.length - 1]], o = node.o[k];
+      const good = !o[2].startsWith('@') && gfReach(c, o[2], target);
+      if (!T.marks.tried) { T.total++; if (good) T.steps++; }
+      if (good) { T.chosen.push(k); T.path.push(o[2]); T.marks = {}; T.msg = ''; }
+      else { T.slip = true; T.marks = Object.assign({}, T.marks, { [k]: 'bad', tried: 1 }); T.msg = `<div class="fb bad">Not this branch for this sentence. Look at the sentence again${node.hint ? ': ' + esc(node.hint) : ''}.</div>`; }
+      render();
+    });
+    const done = (typed) => {
+      const ok = it[3].split('|').some(a => norm(a) === norm(typed || ''));
+      T.final_done = true; if (ok) T.final++; if (ok && !T.slip) T.score++;
+      T.msg = ok ? `<div class="fb good">Correct: <span class="ru">${esc(it[3].split('|')[0])}</span></div>` : `<div class="fb bad">Answer: <span class="ru">${esc(it[3].split('|')[0])}</span>${typed ? ` (you wrote ${esc(typed)})` : ''}</div>`;
+      const all = LS.get('gfl', {}), st = all[S.c] = all[S.c] || { n: 0, ok: 0 }; st.n++; if (ok && !T.slip) st.ok++; LS.set('gfl', all);
+      render();
+    };
+    el.querySelectorAll('[data-gfa]').forEach(b => b.onclick = () => done(b.dataset.gfa));
+    const chk = $('#gfchk', el); if (chk) { const inp = $('#ans', el); if (inp && !T.final_done) inp.focus(); chk.onclick = () => done(inp.value.trim()); inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); done(inp.value.trim()); } }; }
+    const nx = $('#gfnext', el); if (nx) { nx.focus(); nx.onclick = () => { T.i++; if (T.i < T.items.length) gfTryReset(); render(); window.scrollTo({ top: 0 }); }; }
+  }
+}
+function gfCards() {
+  const list = gfCharts();
+  if (!list.length) return '';
+  return `<h2 class="grl">Decision charts</h2><p class="small muted">Answer one question at a time and the chart leads you to the right form, with what not to forget. Then try it on real sentences.</p>
+    <div class="gf-cards"><button class="gf-card hub" data-gfgo="hub"><b>Not sure? Start here</b><span>Which chart do I need?</span></button>${list.map(([k, c]) => `<button class="gf-card" data-gfgo="${k}"><b>${esc(c.title)}</b><span>${esc(c.blurb)}</span></button>`).join('')}</div>`;
 }
 
 /* ============================== START HERE (guide) ============================== */
@@ -2253,7 +2593,7 @@ const GUIDE_TABS = [
   ['practice', 'Practice', 'Your daily session, about 15 minutes', 'Built from your Diagnostic: the words that are due for review on a spaced-repetition schedule, plus short drills on your weakest rules, cases and grammar.',
     ['Do it once a day. Words you know come back less often; words you miss come back sooner.', 'Want just one thing today? Pick a focus instead: words, spelling rules, case endings, grammar, dictation or speaking scripts.']],
   ['gtab', 'Grammar', 'Every grammar rule, lesson by lesson', 'All the grammar from the textbooks up to the lesson you’re on: a short explanation of each rule with tables and examples, and practice questions for it.',
-    ['Open a rule to read it, then press Practice. The first time, the explanation comes up before the questions.', 'Mixed review drills all your rules at once and gives more questions to the ones you miss. “Type everything” turns choices into typing for a harder round.', 'Each rule shows how you did on your last 10 answers: Needs work, Getting there or Solid.']],
+    ['Not sure which form to use? The decision charts at the top walk you through it one question at a time (“Is it where something is, or where it goes?”) and end with the answer and what not to forget. “Try it with sentences” makes you walk the chart yourself.', 'Open a rule to read it, then press Practice. The first time, the explanation comes up before the questions.', 'Mixed review drills all your rules at once and gives more questions to the ones you miss. “Type everything” turns choices into typing for a harder round.', 'Each rule shows how you did on your last 10 answers: Needs work, Getting there or Solid.']],
   ['grind', 'Grind', 'Extra practice, as many rounds as you want', 'Endless short rounds that mix reading, listening and speaking exercises modeled on your homework and lab books. It aims at your weakest exercise types and leans toward your most recent lessons.',
     ['Choose which skills to include and how long a round is.', 'Long listening passages usually show the questions first, like class tests; sometimes they don’t, to train listening without hints.', 'Speaking items are checked by you: say it out loud, then compare with the model.']],
   ['study', 'Words', 'Study one lesson’s vocabulary', 'Flashcards and drills like Anki or Quizlet for any lesson’s word list.',
@@ -4884,7 +5224,7 @@ async function setLesson(l) {
 function render() {
   const gl = document.getElementById('gLesson'); if (gl) { gl.innerHTML = lessonOptions(curLesson()); gl.onchange = e => setLesson(+e.target.value); }
   const el = $('#app');
-  document.querySelectorAll('.navb[data-view]').forEach(b => b.setAttribute('aria-current', b.dataset.view === state.view || (b.dataset.view === 'home' && ['home', 'setup'].includes(state.view))));
+  document.querySelectorAll('.navb[data-view]').forEach(b => b.setAttribute('aria-current', b.dataset.view === state.view || (b.dataset.view === 'gtab' && state.view === 'gflow') || (b.dataset.view === 'home' && ['home', 'setup'].includes(state.view))));
   if (state.view === 'run' && !state.run) state.view = 'home';
   if (state.view === 'home') { el.innerHTML = viewHome(); wireHome(el); }
   else if (state.view === 'setup') { el.innerHTML = viewSetup(); wireSetup(el); }
@@ -4892,6 +5232,7 @@ function render() {
   else if (state.view === 'done' && state.lastSummary?.section === 'names') { el.innerHTML = namesRecap(state.lastSummary); $('#nagain', el).onclick = () => startSection('names', state.lastSummary.opt); $('#nback', el).onclick = () => { state.view = 'names'; render(); }; }
   else if (state.view === 'names') { el.innerHTML = viewNames(); wireNames(el); }
   else if (state.view === 'gtab') { el.innerHTML = viewGtab(); wireGtab(el); }
+  else if (state.view === 'gflow' && state.gf) { el.innerHTML = viewGflow(); wireGflow(el); }
   else if (state.view === 'done' && state.lastSummary?.section === 'gtab') { el.innerHTML = gtabRecap(state.lastSummary); $('#gagain', el).onclick = () => startSection('gtab', state.lastSummary.opt); $('#gback', el).onclick = () => { state.view = 'gtab'; render(); }; $('#gagain', el).focus(); }
   else if (state.view === 'guide') { el.innerHTML = viewGuide(); wireGuide(el); }
   else if (state.view === 'coach') { el.innerHTML = viewCoach(); wireCoach(el); }
