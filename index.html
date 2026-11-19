@@ -281,7 +281,7 @@ body.rep-open { overflow: hidden; }
   var deferred = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; var b = document.getElementById('installBtn'); if (b) b.hidden = false; });
   window.appInstall = function () { if (deferred) { deferred.prompt(); deferred = null; } };
-  window.APP_VERSION = '8b765b2e'; window.APP_BUILT = 'Nov 19, 2026 20:09 UTC';
+  window.APP_VERSION = '33e1d995'; window.APP_BUILT = 'Nov 19, 2026 22:01 UTC';
   // Hard refresh: drop the offline copy and load the newest version. Progress (saved separately on the device) is not touched.
   window.appHardRefresh = async function () {
     var b = document.getElementById('updBtn'); if (b) { b.disabled = true; b.textContent = 'Updating…'; }
@@ -307,7 +307,7 @@ body.rep-open { overflow: hidden; }
   window.addEventListener('load', function () { setTimeout(function () { appCheckUpdate(true); }, 1500); });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') appCheckUpdate(true); });
 })();
-</script><div id="verstamp" style="text-align:center;font:12px system-ui,sans-serif;opacity:.55;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px))">Version 8b765b2e · updated Nov 19, 2026 · <a href="#" onclick="appCheckUpdate();return false">check for updates</a></div></template><script>addEventListener("DOMContentLoaded",function(){var t=document.getElementById("verstampT");if(t)document.body.appendChild(t.content.cloneNode(true));});</script><style>#updbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;display:flex;gap:10px;align-items:center;justify-content:space-between;background:#1c2f6b;color:#fff;padding:12px 14px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);font:14px/1.35 system-ui,sans-serif}#updbar button{flex:none;border:0;border-radius:6px;padding:8px 12px;font:600 14px system-ui,sans-serif;background:#fff;color:#1c2f6b;cursor:pointer}</style></head><body><header class="top"><div class="topin">
+</script><div id="verstamp" style="text-align:center;font:12px system-ui,sans-serif;opacity:.55;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px))">Version 33e1d995 · updated Nov 19, 2026 · <a href="#" onclick="appCheckUpdate();return false">check for updates</a></div></template><script>addEventListener("DOMContentLoaded",function(){var t=document.getElementById("verstampT");if(t)document.body.appendChild(t.content.cloneNode(true));});</script><style>#updbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;display:flex;gap:10px;align-items:center;justify-content:space-between;background:#1c2f6b;color:#fff;padding:12px 14px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);font:14px/1.35 system-ui,sans-serif}#updbar button{flex:none;border:0;border-radius:6px;padding:8px 12px;font:600 14px system-ui,sans-serif;background:#fff;color:#1c2f6b;cursor:pointer}</style></head><body><header class="top"><div class="topin">
   <div class="brand" id="brand" role="button" tabindex="0">Курс русского · Уроки 1–41</div>
   <nav id="nav">
     <button class="navb" data-view="guide">Start here</button>
@@ -5236,16 +5236,19 @@ function genForms(w) {
 }
 const NOINF = new Set('а да дома и кто он она там тут это вы где или мы не нет оно они что ты я два две девять десять его её здесь кино восемь ноль один пожалуйста пока прямо пять рядом семь спасибо слева справа три чей четыре шесть их тоже просто ещё нормально но обычно очень сегодня сейчас уже близко вечером все всё вчера далеко днём завтра кажется когда конечно наверно недалеко ночью позавчера послезавтра правильно утром плохо хорошо меня тебя нас вас всегда часто только почему поэтому пальто быстро домой куда легко мало медленно много можно нельзя немного потом громко холодно жарко скучно вместе иногда поздно рано редко так оба обе о есть налево направо нигде никогда никто никуда ничего пешком метро такси рад'.split(' '));
 let BANK_RU = null;
+// The blank must hide the word in the sentence; match it case-insensitively ("На завтрак" at the start of a sentence).
+const ctxRe = form => new RegExp('(^|[\\s«(—-])' + form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+') + '(?=[\\s.,!?»:;)—-]|$)', 'i');
 function contextsFor(w) {
   BANK_RU = BANK_RU || new Set(BANK.map(x => lowRu(x.ru)));
   const r = lowRu(w.ru);
-  if (/ /.test(r)) return ctxIndex().filter(c => lowRu(c.ru).includes(r)).map(c => ({ ...c, form: w.ru }));
+  if (/ /.test(r)) return ctxIndex().filter(c => lowRu(c.ru).includes(r) && ctxRe(w.ru).test(c.ru)).map(c => ({ ...c, form: w.ru }));
   const forms = genForms(w), out = [];
   for (const c of ctxIndex()) {
     for (const t of c.ru.split(/\s+/)) {
       const n = lowRu(t); if (!n || !forms.has(n)) continue;
       if (n !== r && BANK_RU.has(n)) continue; // the token is a different vocabulary word (e.g. дома "at home" vs дом)
-      out.push({ ...c, form: t.replace(/[.,!?«»—:;"]/g, '') }); break;
+      const form = t.replace(/[.,!?«»—:;"]/g, ''); if (!ctxRe(form).test(c.ru)) continue;
+      out.push({ ...c, form }); break;
     }
   }
   return out;
@@ -5354,7 +5357,7 @@ function renderStudy() {
   // typed / multiple-choice modes
   let stage = S.mode === 'learn' ? q.stage : 2, prompt = '', target = w.ru, accept = acceptFor(w), cue = '', lang = 'ru';
   if (S.mode === 'forms') { const f = q.f || (q.f = pick(formsOf(w), 1)[0]); prompt = `<span class="ru">${esc(w.ru)}</span> <span class="muted">(${esc(w.en)})</span>`; cue = `Write the form: <b>${esc(f[0])}</b>`; target = f[1]; accept = [f[1]]; }
-  if (S.mode === 'ctx') { const c = q.c || (q.c = pick(contextsFor(w), 1)[0]); const re = new RegExp('(^|[\\s«(])' + c.form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=[\\s.,!?»:;]|$)'); prompt = `<span class="ru">${esc(c.ru).replace(re, '$1<span class="gap">&nbsp;</span>')}</span>${c.en ? `<div class="small muted">${esc(c.en)}</div>` : ''}`; cue = `Use: <span class="ru">${esc(w.ru)}</span> (${esc(w.en)}). Put it in the right form.`; target = c.form; accept = [c.form]; }
+  if (S.mode === 'ctx') { const c = q.c || (q.c = pick(contextsFor(w), 1)[0]); const re = ctxRe(c.form); prompt = `<span class="ru">${esc(c.ru).replace(re, '$1<span class="gap">&nbsp;</span>')}</span>${c.en ? `<div class="small muted">${esc(c.en)}</div>` : ''}`; cue = `Use: <span class="ru">${esc(w.ru)}</span> (${esc(w.en)}). Put it in the right form.`; target = c.form; accept = [c.form]; }
   const head = studyHead();
   if (stage < 2) { // learn: multiple choice
     const ruToEn = stage === 0;
