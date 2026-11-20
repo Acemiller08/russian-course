@@ -234,6 +234,11 @@ h2.grl { margin-top: 26px; } h2.grl .muted { font-weight: 400; font-size: .85em;
 
 /* word cues */
 .hint.cue-en { font-style: italic; } .cue-set { display: inline-flex; align-items: center; gap: 6px; } .cue-set select { font: inherit; padding: 4px 6px; }
+
+/* script audio */
+.sa-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 8px 0 6px; }
+.sa-line { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 50%; width: 26px; height: 26px; font-size: .7rem; line-height: 1; cursor: pointer; margin-right: 8px; vertical-align: 2px; padding: 0; }
+.transcript p.sa-on { background: color-mix(in srgb, var(--warn) 22%, transparent); border-radius: 4px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 22%, transparent); }
 /* print report */
 .res-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .res-head h1 { margin-bottom: 8px; } .res-head .btn { margin-top: 20px; }
@@ -284,7 +289,7 @@ body.rep-open { overflow: hidden; }
   var deferred = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; var b = document.getElementById('installBtn'); if (b) b.hidden = false; });
   window.appInstall = function () { if (deferred) { deferred.prompt(); deferred = null; } };
-  window.APP_VERSION = '3ffec6f8'; window.APP_BUILT = 'Nov 20, 2026 05:05 UTC';
+  window.APP_VERSION = 'abd821b9'; window.APP_BUILT = 'Nov 20, 2026 05:25 UTC';
   // Hard refresh: drop the offline copy and load the newest version. Progress (saved separately on the device) is not touched.
   window.appHardRefresh = async function () {
     var b = document.getElementById('updBtn'); if (b) { b.disabled = true; b.textContent = 'Updating…'; }
@@ -310,7 +315,7 @@ body.rep-open { overflow: hidden; }
   window.addEventListener('load', function () { setTimeout(function () { appCheckUpdate(true); }, 1500); });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') appCheckUpdate(true); });
 })();
-</script><div id="verstamp" style="text-align:center;font:12px system-ui,sans-serif;opacity:.55;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px))">Version 3ffec6f8 · updated Nov 20, 2026 · <a href="#" onclick="appCheckUpdate();return false">check for updates</a></div></template><script>addEventListener("DOMContentLoaded",function(){var t=document.getElementById("verstampT");if(t)document.body.appendChild(t.content.cloneNode(true));});</script><style>#updbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;display:flex;gap:10px;align-items:center;justify-content:space-between;background:#1c2f6b;color:#fff;padding:12px 14px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);font:14px/1.35 system-ui,sans-serif}#updbar button{flex:none;border:0;border-radius:6px;padding:8px 12px;font:600 14px system-ui,sans-serif;background:#fff;color:#1c2f6b;cursor:pointer}</style></head><body><header class="top"><div class="topin">
+</script><div id="verstamp" style="text-align:center;font:12px system-ui,sans-serif;opacity:.55;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px))">Version abd821b9 · updated Nov 20, 2026 · <a href="#" onclick="appCheckUpdate();return false">check for updates</a></div></template><script>addEventListener("DOMContentLoaded",function(){var t=document.getElementById("verstampT");if(t)document.body.appendChild(t.content.cloneNode(true));});</script><style>#updbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;display:flex;gap:10px;align-items:center;justify-content:space-between;background:#1c2f6b;color:#fff;padding:12px 14px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);font:14px/1.35 system-ui,sans-serif}#updbar button{flex:none;border:0;border-radius:6px;padding:8px 12px;font:600 14px system-ui,sans-serif;background:#fff;color:#1c2f6b;cursor:pointer}</style></head><body><header class="top"><div class="topin">
   <div class="brand" id="brand" role="button" tabindex="0">Курс русского · Уроки 1–41</div>
   <nav id="nav">
     <button class="navb" data-view="guide">Start here</button>
@@ -3128,6 +3133,41 @@ function cueWatch(root) { let busy = false; new MutationObserver(() => { if (bus
 const cueSelectHTML = (id = 'cueLang') => `<label class="small muted cue-set" for="${id}">Word cues <select id="${id}" data-cue-sel>${[['ru', 'in Russian (like the homework)'], ['en', 'in English (recall the word too)'], ['mix', 'Mix']].map(([v, t]) => `<option value="${v}" ${cueMode() === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;
 document.addEventListener('change', e => { if (e.target.matches && e.target.matches('[data-cue-sel]')) { LS.set('cueLang', e.target.value); toast(e.target.value === 'ru' ? 'Word cues in Russian.' : e.target.value === 'en' ? 'Word cues in English: recall the word and its form.' : 'Word cues: a mix of Russian and English.'); } });
 
+/* ============================== LISTEN TO A SCRIPT ==============================
+   Every multi-line script / transcript gets "▶ Play the script" (plays it line by line, highlighting the line being read)
+   and a ▶ button on each line to replay just that line. */
+let SCRIPT_RUN = 0;
+function scriptEnhance(tr) {
+  const ps = [...tr.querySelectorAll(':scope > p')].filter(p => /[А-Яа-яЁё]/.test(p.textContent));
+  if (ps.length < 2) return;
+  tr.dataset.sa = '1';
+  const names = [];
+  const lines = ps.map(p => { const b = p.querySelector('b'); const who = b ? b.textContent.replace(/:\s*$/, '').trim() : ''; if (who && !names.includes(who)) names.push(who);
+    const text = (b ? p.textContent.slice(b.textContent.length) : p.textContent).trim(); return [who ? (names.indexOf(who) % 2 ? 'B' : 'A') : 'A', text]; });
+  ps.forEach((p, i) => { const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'sa-line'; btn.setAttribute('aria-label', 'Play this line'); btn.textContent = '▶'; btn.onclick = () => playFrom(i, true); p.prepend(btn); });
+  const bar = document.createElement('div'); bar.className = 'sa-bar';
+  bar.innerHTML = `<button type="button" class="btn ghost sm sa-all">▶ Play the script</button><span class="small muted">or tap ▶ on a line to replay just that line</span>`;
+  tr.before(bar);
+  const all = bar.querySelector('.sa-all');
+  const clear = () => { ps.forEach(p => p.classList.remove('sa-on')); all.textContent = '▶ Play the script'; all.dataset.on = ''; };
+  const playFrom = (i, only) => {
+    const run = ++SCRIPT_RUN; TTS.stop(); clear(); if (!only) { all.textContent = '■ Stop'; all.dataset.on = '1'; }
+    const step = j => {
+      if (run === SCRIPT_RUN && !tr.isConnected) { SCRIPT_RUN++; TTS.stop(); return; }   // left the screen: stop reading
+      if (run !== SCRIPT_RUN || j >= lines.length || (only && j > i)) { if (run === SCRIPT_RUN) clear(); return; }
+      ps.forEach(p => p.classList.remove('sa-on')); ps[j].classList.add('sa-on');
+      if (!only) ps[j].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      TTS.play([lines[j]], ok => { if (run !== SCRIPT_RUN) return; if (!ok && j === i) { clear(); toast('No sound came out. Check the volume and the Russian voice (Start here → Test sound).'); return; } setTimeout(() => step(j + 1), 250); });
+    };
+    step(i);
+  };
+  all.onclick = () => { if (all.dataset.on) { SCRIPT_RUN++; TTS.stop(); clear(); } else playFrom(0, false); };
+}
+function scriptWatch(root) {
+  new MutationObserver(() => { root.querySelectorAll('.transcript:not([data-sa])').forEach(tr => { if (tr.offsetParent !== null || tr.closest('details')) scriptEnhance(tr); }); })
+    .observe(root, { childList: true, subtree: true });
+}
+
 /* ============================== START HERE (guide) ============================== */
 const GUIDE_TABS = [
   ['home', 'Diagnostic', 'Find out where you stand', 'Six short tests: vocabulary, cases & forms, grammar, English → Russian, listening and speaking. Do them in any order, one at a time; each one saves when you finish, and “Save & exit” lets you stop halfway.',
@@ -5793,6 +5833,7 @@ async function setLesson(l) {
 let retypeOn = false;
 function render() {
   if (!retypeOn && $('#app')) { retypeOn = true; retypeWatch($('#app')); }
+  if ($('#app') && !$('#app').dataset.sa) { $('#app').dataset.sa = '1'; scriptWatch($('#app')); }
   if ($('#app') && !$('#app').dataset.cue) { $('#app').dataset.cue = '1'; cueWatch($('#app')); }
   if ($('#app') && !$('#app').dataset.wc) { wcInit(); if (!LS.get('wcTip', false)) { LS.set('wcTip', true); setTimeout(() => toast('New: tap any Russian word to see all its forms.'), 1200); } }
   const gl = document.getElementById('gLesson'); if (gl) { gl.innerHTML = lessonOptions(curLesson()); gl.onchange = e => setLesson(+e.target.value); }
