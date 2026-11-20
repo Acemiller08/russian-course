@@ -231,6 +231,9 @@ h2.grl { margin-top: 26px; } h2.grl .muted { font-weight: 400; font-size: .85em;
 .wc-t td.wc-none { color: var(--muted); }
 .wc-src { font-size: .72rem; color: var(--muted); margin: 12px 0 0; }
 @media (hover: hover) { #app .ru { cursor: help; } }
+
+/* word cues */
+.hint.cue-en { font-style: italic; } .cue-set { display: inline-flex; align-items: center; gap: 6px; } .cue-set select { font: inherit; padding: 4px 6px; }
 /* print report */
 .res-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .res-head h1 { margin-bottom: 8px; } .res-head .btn { margin-top: 20px; }
@@ -281,7 +284,7 @@ body.rep-open { overflow: hidden; }
   var deferred = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; var b = document.getElementById('installBtn'); if (b) b.hidden = false; });
   window.appInstall = function () { if (deferred) { deferred.prompt(); deferred = null; } };
-  window.APP_VERSION = '60dc6b35'; window.APP_BUILT = 'Nov 20, 2026 04:51 UTC';
+  window.APP_VERSION = '3ffec6f8'; window.APP_BUILT = 'Nov 20, 2026 05:05 UTC';
   // Hard refresh: drop the offline copy and load the newest version. Progress (saved separately on the device) is not touched.
   window.appHardRefresh = async function () {
     var b = document.getElementById('updBtn'); if (b) { b.disabled = true; b.textContent = 'Updating…'; }
@@ -307,7 +310,7 @@ body.rep-open { overflow: hidden; }
   window.addEventListener('load', function () { setTimeout(function () { appCheckUpdate(true); }, 1500); });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') appCheckUpdate(true); });
 })();
-</script><div id="verstamp" style="text-align:center;font:12px system-ui,sans-serif;opacity:.55;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px))">Version 60dc6b35 · updated Nov 20, 2026 · <a href="#" onclick="appCheckUpdate();return false">check for updates</a></div></template><script>addEventListener("DOMContentLoaded",function(){var t=document.getElementById("verstampT");if(t)document.body.appendChild(t.content.cloneNode(true));});</script><style>#updbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;display:flex;gap:10px;align-items:center;justify-content:space-between;background:#1c2f6b;color:#fff;padding:12px 14px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);font:14px/1.35 system-ui,sans-serif}#updbar button{flex:none;border:0;border-radius:6px;padding:8px 12px;font:600 14px system-ui,sans-serif;background:#fff;color:#1c2f6b;cursor:pointer}</style></head><body><header class="top"><div class="topin">
+</script><div id="verstamp" style="text-align:center;font:12px system-ui,sans-serif;opacity:.55;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px))">Version 3ffec6f8 · updated Nov 20, 2026 · <a href="#" onclick="appCheckUpdate();return false">check for updates</a></div></template><script>addEventListener("DOMContentLoaded",function(){var t=document.getElementById("verstampT");if(t)document.body.appendChild(t.content.cloneNode(true));});</script><style>#updbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;display:flex;gap:10px;align-items:center;justify-content:space-between;background:#1c2f6b;color:#fff;padding:12px 14px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);font:14px/1.35 system-ui,sans-serif}#updbar button{flex:none;border:0;border-radius:6px;padding:8px 12px;font:600 14px system-ui,sans-serif;background:#fff;color:#1c2f6b;cursor:pointer}</style></head><body><header class="top"><div class="topin">
   <div class="brand" id="brand" role="button" tabindex="0">Курс русского · Уроки 1–41</div>
   <nav id="nav">
     <button class="navb" data-view="guide">Start here</button>
@@ -2298,7 +2301,7 @@ function viewGtab() {
         ${weak.length ? `<button class="btn ghost" data-gset="weak">My weakest rules (10)</button>` : ''}
         ${fresh.length && fresh.length < rules.length ? `<button class="btn ghost" data-gset="new">Rules I haven’t tried (10)</button>` : ''}</div>
       <div class="actions"><label class="small muted" for="gmode">Answers</label><select id="gmode"><option value="mix" ${mode === 'mix' ? 'selected' : ''}>Mixed: choose or type</option><option value="type" ${mode === 'type' ? 'selected' : ''}>Type everything (harder)</option></select>
-        <label class="small muted"><input type="checkbox" id="gall" ${showAll ? 'checked' : ''}> Show later lessons too (${later.length} more rules)</label></div></div>
+        <label class="small muted"><input type="checkbox" id="gall" ${showAll ? 'checked' : ''}> Show later lessons too (${later.length} more rules)</label>${cueSelectHTML('cueLangR')}</div></div>
     ${gfCards()}<h2 class="grl" style="margin-top:34px">Rules by lesson</h2>
     ${lessons.map(l => `<h2 class="grl">Lesson ${l}${COURSE_TITLES[l] ? ` <span class="muted">· ${esc(COURSE_TITLES[l])}</span>` : ''}</h2>${(showAll ? GRULES : rules).filter(r => r.l === l).map(row).join('')}`).join('')}
     ${!showAll && later.length ? `<p class="small muted">${later.length} more rules unlock as you move through Lessons ${L + 1}–40.</p>` : ''}`;
@@ -3065,6 +3068,66 @@ function wcInit() {
   });
 }
 
+/* ============================== CUES IN RUSSIAN OR ENGLISH ==============================
+   "Через час я ___ ужин. (приготовить)" can show its cue in English instead: "(cook / prepare, pf.)",
+   so you recall the word and its form together. Setting: Russian / English / Mix. After you answer, both are shown.
+   The Coach switches to English cues from step 3 of its ladder. Names & Numbers keeps its Russian names. */
+const CUE_MOTION = { идти: 'go on foot · one way, now', ходить: 'go on foot · regularly / round trip', ехать: 'go by vehicle · one way, now', ездить: 'go by vehicle · regularly / round trip',
+  лететь: 'fly · one way, now', летать: 'fly · regularly / round trip', плыть: 'swim / sail · one way, now', плавать: 'swim · regularly / can swim', бежать: 'run · one way, now', бегать: 'run · regularly',
+  нести: 'carry on foot · now', носить: 'carry · regularly; wear', вести: 'lead on foot · now', водить: 'lead · regularly; drive (a car)', везти: 'transport · now', возить: 'transport · regularly',
+  пойти: 'set off on foot, pf.', поехать: 'set off by vehicle, pf.', полететь: 'fly off, pf.' };
+const CUE_KEEP = new Set(['в', 'во', 'на', 'о', 'об', 'обо', 'с', 'со', 'у', 'к', 'ко', 'по', 'из', 'от', 'до', 'за', 'для', 'без', 'и', 'а', 'не']);
+const cueMode = () => LS.get('cueLang', 'ru');
+const cueClean = en => { let s = String(en || '').split(/;|\s—\s/)[0].replace(/\([^)]*\)/g, '').replace(/^\s*to\s+/i, '').replace(/,\s*to\s+/g, ' / ').replace(/\s+/g, ' ').trim();
+  if (s.length > 34) s = s.split(',')[0].trim(); return s; };
+let CUE_BANK = null;
+function cueBankEn(w) {
+  if (!CUE_BANK) { CUE_BANK = new Map(); for (const x of BANK) for (const part of x.ru.split(/\s*\/\s*|,\s+/)) { const k = wcBare(part.replace(/[!?.…]/g, '').trim()); if (k && !CUE_BANK.has(k)) CUE_BANK.set(k, x.en); } }
+  return CUE_BANK.get(wcBare(w));
+}
+function cueWord(tok) {
+  const b = wcBare(tok); if (CUE_KEEP.has(b)) return tok;
+  if (CUE_MOTION[b]) return CUE_MOTION[b];
+  const hit = wcLookup(tok)[0], e = hit && LEX[hit.k][hit.i];
+  let en = cueBankEn(tok) || (e && hit.k === b ? e.en : null), extra = [];
+  if (!en && e) { en = cueBankEn(hit.k) || e.en; if (e.p === 'n' && hit.slots.length && hit.slots.every(s => s >= 6)) extra.push('pl.'); }
+  if (!en) return tok;   // names and words the dictionary doesn't have stay in Russian
+  en = cueClean(en); if (!en) return tok;
+  if (e && e.p === 'v') { if (/с[яь]$/.test(b) && LEX[b.replace(/с[яь]$/, '')]) extra.push('-ся'); extra.push(e.asp === 'perf' ? 'pf.' : 'impf.'); }
+  return en + (extra.length ? ', ' + extra.join(', ') : '');
+}
+function cueEnglish(text) {   // "(мой брат)" -> "(my + brother)"; leaves English, numbers and grammar notes alone
+  const inner = text.replace(/^\(|\)$/g, '');
+  const parts = inner.split(/(\s*[—,+]\s*|\s+)/);
+  const out = parts.map(p => /[А-Яа-яЁё]/.test(p) ? cueWord(p) : p).join('');
+  return '(' + out + ')';
+}
+function cueEligible(el) {
+  const t = el.textContent.trim();
+  if (!/^\(.*\)$/.test(t) || !/[А-Яа-яЁё]/.test(t) || / \/ /.test(t)) return false;
+  if ((t.match(/[А-Яа-яЁё]+/g) || []).length > 4) return false;
+  if (state.view === 'names' || (state.run && /^names/.test(state.run.sec || ''))) return false;
+  return !!el.closest('.prompt, .gf-sent, .gprompt, .card, .q, .item, #app');
+}
+function cueFor(el) {
+  const it = state.run && state.run.items && state.run.items[state.run.idx];
+  if (state.run && state.run.sec === 'coach' && it && it.step >= 2) return 'en';
+  const m = cueMode(); if (m !== 'mix') return m;
+  let h = 0; for (const c of (el.closest('.prompt, .gf-sent') || el).textContent) h = (h * 31 + c.charCodeAt(0)) | 0; return (h & 1) ? 'en' : 'ru';
+}
+function cueApply(root) {
+  const answered = !!root.querySelector('#fb .fb, #gffb .fb');
+  root.querySelectorAll('.hint').forEach(el => {
+    if (!el.dataset.cueRu) { if (!cueEligible(el)) return; el.dataset.cueRu = el.textContent.trim(); el.dataset.cueEn = cueEnglish(el.dataset.cueRu); el.dataset.cueAs = cueFor(el); }
+    const ru = el.dataset.cueRu, en = el.dataset.cueEn; if (en === ru) return;
+    const want = answered ? `(${ru.slice(1, -1)} = ${en.slice(1, -1)})` : el.dataset.cueAs === 'en' ? en : ru;
+    if (el.textContent !== want) { el.textContent = want; el.classList.toggle('cue-en', el.dataset.cueAs === 'en' && !answered); }
+  });
+}
+function cueWatch(root) { let busy = false; new MutationObserver(() => { if (busy) return; busy = true; try { cueApply(root); } finally { busy = false; } }).observe(root, { childList: true, subtree: true }); }
+const cueSelectHTML = (id = 'cueLang') => `<label class="small muted cue-set" for="${id}">Word cues <select id="${id}" data-cue-sel>${[['ru', 'in Russian (like the homework)'], ['en', 'in English (recall the word too)'], ['mix', 'Mix']].map(([v, t]) => `<option value="${v}" ${cueMode() === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;
+document.addEventListener('change', e => { if (e.target.matches && e.target.matches('[data-cue-sel]')) { LS.set('cueLang', e.target.value); toast(e.target.value === 'ru' ? 'Word cues in Russian.' : e.target.value === 'en' ? 'Word cues in English: recall the word and its form.' : 'Word cues: a mix of Russian and English.'); } });
+
 /* ============================== START HERE (guide) ============================== */
 const GUIDE_TABS = [
   ['home', 'Diagnostic', 'Find out where you stand', 'Six short tests: vocabulary, cases & forms, grammar, English → Russian, listening and speaking. Do them in any order, one at a time; each one saves when you finish, and “Save & exit” lets you stop halfway.',
@@ -3074,7 +3137,7 @@ const GUIDE_TABS = [
   ['practice', 'Practice', 'Your daily session, about 15 minutes', 'Built from your Diagnostic: the words that are due for review on a spaced-repetition schedule, plus short drills on your weakest rules, cases and grammar.',
     ['Do it once a day. Words you know come back less often; words you miss come back sooner.', 'Want just one thing today? Pick a focus instead: words, spelling rules, case endings, grammar, dictation or speaking scripts.']],
   ['gtab', 'Grammar', 'Every grammar rule, lesson by lesson', 'All the grammar from the textbooks up to the lesson you’re on: a short explanation of each rule with tables and examples, and practice questions for it.',
-    ['Tap any Russian word on the site (passages, word lists, answers, charts) to open its word card: dictionary form, meaning, lesson, and every form in a table, with the one you tapped highlighted. Cards stay closed while a question is still waiting for your answer.', 'Not sure which form to use? The decision charts at the top walk you through it one question at a time (“Is it where something is, or where it goes?”) and end with the answer and what not to forget. “Try it with sentences” makes you walk the chart yourself.', 'Open a rule to read it, then press Practice. The first time, the explanation comes up before the questions.', 'Mixed review drills all your rules at once and gives more questions to the ones you miss. “Type everything” turns choices into typing for a harder round.', 'Each rule shows how you did on your last 10 answers: Needs work, Getting there or Solid.']],
+    ['Word cues: the word in parentheses can be in Russian (like the homework), in English (so you recall the word and its form together), or a mix. Change it in Grind, Grammar or Diagnostic settings. After you answer, both are shown. The Coach switches to English cues once you can type a form correctly.', 'Tap any Russian word on the site (passages, word lists, answers, charts) to open its word card: dictionary form, meaning, lesson, and every form in a table, with the one you tapped highlighted. Cards stay closed while a question is still waiting for your answer.', 'Not sure which form to use? The decision charts at the top walk you through it one question at a time (“Is it where something is, or where it goes?”) and end with the answer and what not to forget. “Try it with sentences” makes you walk the chart yourself.', 'Open a rule to read it, then press Practice. The first time, the explanation comes up before the questions.', 'Mixed review drills all your rules at once and gives more questions to the ones you miss. “Type everything” turns choices into typing for a harder round.', 'Each rule shows how you did on your last 10 answers: Needs work, Getting there or Solid.']],
   ['grind', 'Grind', 'Extra practice, as many rounds as you want', 'Endless short rounds that mix reading, listening and speaking exercises modeled on your homework and lab books. It aims at your weakest exercise types and leans toward your most recent lessons.',
     ['Choose which skills to include and how long a round is.', 'Long listening passages usually show the questions first, like class tests; sometimes they don’t, to train listening without hints.', 'Speaking items are checked by you: say it out loud, then compare with the model.']],
   ['study', 'Words', 'Study one lesson’s vocabulary', 'Flashcards and drills like Anki or Quizlet for any lesson’s word list.',
@@ -5155,7 +5218,7 @@ function viewGrind() {
       <h3>Skills in the mix</h3><div class="chips" id="gsk">${Object.entries(GSKILLS).map(([k, v]) => `<button class="chip" aria-pressed="${opt.skills.includes(k)}" data-sk="${k}">${esc(v)}</button>`).join('')}</div>
       <h3>Exercise types <span class="small muted" style="font-weight:400">· pick some to drill just those, or leave on All</span></h3>
       <div class="chips" id="gty"><button class="chip" aria-pressed="${allT}" data-ty="*">All</button>${avail.map(t => `<button class="chip" aria-pressed="${!allT && opt.types.includes(t)}" data-ty="${t}">${esc(GTYPES[t].name)}</button>`).join('')}</div>
-      <div class="actions"><button class="btn" id="ggo">Start grinding</button></div></div>
+      <div class="actions"><button class="btn" id="ggo">Start grinding</button>${cueSelectHTML('cueLangG')}</div></div>
     <h2>How each skill is going</h2><div class="bars">${skillAcc.map(([sk, a]) => `<div class="bar"><span class="lab">${esc(GSKILLS[sk])}</span><span class="track"><i class="${a >= 80 ? 's3' : a >= 60 ? 's1' : 's0'}" style="width:${a}%"></i></span><span class="num">${a}%</span></div>`).join('')}</div>
     <h2>What it’s targeting now</h2><p class="small muted">Lowest first. Everything starts at 50% and updates after every round you finish.</p>
     <div class="bars">${ranked.slice(0, 8).map(([t, s]) => `<div class="bar"><span class="lab">${esc(GTYPES[t].name)} <span class="muted small">· ${esc(GSKILLS[GTYPES[t].skill])}</span></span><span class="track"><i class="${s.acc >= .8 ? 's3' : s.acc >= .6 ? 's1' : 's0'}" style="width:${Math.round(s.acc * 100)}%"></i></span><span class="num">${Math.round(s.acc * 100)}%</span></div>`).join('')}</div>
@@ -5449,6 +5512,7 @@ function viewHome() {
     <div class="card"><div class="row"><label for="rate"><b>Speech speed</b></label>
       <select id="rate">${[[0.75, 'Slow'], [0.9, 'Class pace (default)'], [1, 'Natural']].map(([v, t]) => `<option value="${v}" ${TTS.rate == v ? 'selected' : ''}>${t}</option>`).join('')}</select>
       <button class="btn ghost sm" id="test">▶ Test voice</button></div>${voice}
+      <div class="row" style="margin-top:10px">${cueSelectHTML('cueLangD')}</div>
       <p class="small muted">Typing: use your Russian keyboard layout, or the on-screen one (button at the top). You can type е for ё; stress marks are never needed.</p>
       <div class="row" style="margin-top:6px"><button class="btn ghost sm" id="goStartOver">Clear data / start over…</button></div></div>`;
 }
@@ -5729,6 +5793,7 @@ async function setLesson(l) {
 let retypeOn = false;
 function render() {
   if (!retypeOn && $('#app')) { retypeOn = true; retypeWatch($('#app')); }
+  if ($('#app') && !$('#app').dataset.cue) { $('#app').dataset.cue = '1'; cueWatch($('#app')); }
   if ($('#app') && !$('#app').dataset.wc) { wcInit(); if (!LS.get('wcTip', false)) { LS.set('wcTip', true); setTimeout(() => toast('New: tap any Russian word to see all its forms.'), 1200); } }
   const gl = document.getElementById('gLesson'); if (gl) { gl.innerHTML = lessonOptions(curLesson()); gl.onchange = e => setLesson(+e.target.value); }
   const el = $('#app');
