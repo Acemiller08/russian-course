@@ -281,7 +281,7 @@ body.rep-open { overflow: hidden; }
   var deferred = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; var b = document.getElementById('installBtn'); if (b) b.hidden = false; });
   window.appInstall = function () { if (deferred) { deferred.prompt(); deferred = null; } };
-  window.APP_VERSION = '33e1d995'; window.APP_BUILT = 'Nov 19, 2026 22:01 UTC';
+  window.APP_VERSION = '60dc6b35'; window.APP_BUILT = 'Nov 20, 2026 04:51 UTC';
   // Hard refresh: drop the offline copy and load the newest version. Progress (saved separately on the device) is not touched.
   window.appHardRefresh = async function () {
     var b = document.getElementById('updBtn'); if (b) { b.disabled = true; b.textContent = 'Updating…'; }
@@ -307,7 +307,7 @@ body.rep-open { overflow: hidden; }
   window.addEventListener('load', function () { setTimeout(function () { appCheckUpdate(true); }, 1500); });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') appCheckUpdate(true); });
 })();
-</script><div id="verstamp" style="text-align:center;font:12px system-ui,sans-serif;opacity:.55;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px))">Version 33e1d995 · updated Nov 19, 2026 · <a href="#" onclick="appCheckUpdate();return false">check for updates</a></div></template><script>addEventListener("DOMContentLoaded",function(){var t=document.getElementById("verstampT");if(t)document.body.appendChild(t.content.cloneNode(true));});</script><style>#updbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;display:flex;gap:10px;align-items:center;justify-content:space-between;background:#1c2f6b;color:#fff;padding:12px 14px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);font:14px/1.35 system-ui,sans-serif}#updbar button{flex:none;border:0;border-radius:6px;padding:8px 12px;font:600 14px system-ui,sans-serif;background:#fff;color:#1c2f6b;cursor:pointer}</style></head><body><header class="top"><div class="topin">
+</script><div id="verstamp" style="text-align:center;font:12px system-ui,sans-serif;opacity:.55;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px))">Version 60dc6b35 · updated Nov 20, 2026 · <a href="#" onclick="appCheckUpdate();return false">check for updates</a></div></template><script>addEventListener("DOMContentLoaded",function(){var t=document.getElementById("verstampT");if(t)document.body.appendChild(t.content.cloneNode(true));});</script><style>#updbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;display:flex;gap:10px;align-items:center;justify-content:space-between;background:#1c2f6b;color:#fff;padding:12px 14px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);font:14px/1.35 system-ui,sans-serif}#updbar button{flex:none;border:0;border-radius:6px;padding:8px 12px;font:600 14px system-ui,sans-serif;background:#fff;color:#1c2f6b;cursor:pointer}</style></head><body><header class="top"><div class="topin">
   <div class="brand" id="brand" role="button" tabindex="0">Курс русского · Уроки 1–41</div>
   <nav id="nav">
     <button class="navb" data-view="guide">Start here</button>
@@ -4862,8 +4862,9 @@ const gstat = id => (state.gstats && state.gstats[id]) || { n: 0, acc: GTYPES[id
 const allLessons = () => [...new Set(BANK.map(w => w.l))].sort((a, b) => a - b);
 function curLesson() { return state.gcur || 12; }
 const wordsUpTo = () => BANK.filter(w => w.l <= curLesson());
+let GFOCUS = 0;   // Grind "only this lesson": while set, material from any other lesson gets zero weight
 function lessonW(l) {
-  const cur = curLesson(); if (l > cur) return 0;
+  const cur = curLesson(); if (GFOCUS) return l === GFOCUS ? 1 : 0; if (l > cur) return 0;
   const ls = allLessons().filter(x => x <= cur), rank = ls.length - 1 - ls.indexOf(l);
   return rank === 0 ? 6 : rank === 1 ? 3 : rank <= 3 ? 1.6 : 1;
 }
@@ -4950,17 +4951,28 @@ const GB = {
 };
 function gram2(topic, l) { const g = pick(GRAM2[topic], 1)[0]; return g.mc ? { kind: 'mc', l, title: GRAM2_NAMES[topic], prompt: esc(g.p).replace('___', '<span class="gap">&nbsp;</span>'), opts: trapOpts(g.mc, g.ans), ans: g.ans[0] } : { kind: 'type', l, title: GRAM2_NAMES[topic], prompt: esc(g.p), cue: g.cue, ans: g.ans, score: 'exact' }; }
 
+function grindTypes(opt) {   // exercise types that can build an item under the chosen focus (some have no material for one lesson)
+  GFOCUS = opt.focus === 'only' ? curLesson() : 0;
+  try { return Object.keys(GTYPES).filter(t => gtry(t)); } finally { GFOCUS = 0; }
+}
 function buildGrind(opt) {
+  GFOCUS = opt.focus === 'only' ? curLesson() : 0;
+  try { return buildGrind0(opt); } finally { GFOCUS = 0; }
+}
+function buildGrind0(opt) {
   const skills = (opt.skills && opt.skills.length ? opt.skills : Object.keys(GSKILLS)), n = opt.size || 8;
   // early in the course some exercise types have no material yet: only use types that can actually build an item
-  const types = Object.keys(GTYPES).filter(t => skills.includes(GTYPES[t].skill) && gtry(t));
+  let types = Object.keys(GTYPES).filter(t => skills.includes(GTYPES[t].skill) && gtry(t));
+  if (opt.types && opt.types.length) { const picked = types.filter(t => opt.types.includes(t)); if (picked.length) types = picked; }
+  const cap = Math.max(2, Math.ceil(n / Math.max(types.length, 1)) + 1);
   const w = t => { const s = gstat(t); return (1 - s.acc) + 0.2 + (s.n < 2 ? 0.3 : 0); };
   const chosen = [];
   for (const sk of shuffle(skills)) { const ts = types.filter(t => GTYPES[t].skill === sk); if (ts.length && chosen.length < n) chosen.push(wpick(ts, 1, w)[0]); }
-  while (chosen.length < n) { const t = wpick(types.filter(t => chosen.filter(c => c === t).length < 2), 1, w)[0]; if (!t) break; chosen.push(t); }
+  while (chosen.length < n) { const t = wpick(types.filter(t => chosen.filter(c => c === t).length < cap), 1, w)[0]; if (!t) break; chosen.push(t); }
   return shuffle(chosen).map(t => { const it = gtry(t); if (!it) return null; const sk = GTYPES[t].skill; return Object.assign({ t: it.kind === 'pw' ? 'pw' : it.kind === 'cd' ? 'cd' : 'g', gtype: t, gskill: sk }, it); }).filter(Boolean);
 }
-function gtry(t) { for (let i = 0; i < 4; i++) { try { const it = GB[t](); if (it) return it; } catch (e) {} } return null; }
+const gItemLesson = it => it.l ?? (it.id && WORD[it.id] ? WORD[it.id].l : it.gp?.l);
+function gtry(t) { for (let i = 0; i < (GFOCUS ? 8 : 4); i++) { try { const it = GB[t](); if (it && (!GFOCUS || gItemLesson(it) === GFOCUS)) return it; } catch (e) {} } return null; }
 
 /* ============================== GRIND MODE: RENDERERS ============================== */
 function gscore(rec) {
@@ -5127,17 +5139,22 @@ function grindRecap(r) {
     ${s.missed.length ? `<h3>Review these</h3><div class="tbl"><table><tr><th>Exercise</th><th>Item</th><th>Answer</th></tr>${s.missed.map(m => `<tr><td class="small">${esc(GTYPES[m.type].name)}</td><td>${esc(m.label)}</td><td class="ru">${esc(m.ans)}</td></tr>`).join('')}</table></div>` : ''}`;
 }
 function viewGrind() {
-  const cur = curLesson(), opt = LS.get('gopt', { skills: Object.keys(GSKILLS), size: 8 });
+  const cur = curLesson(), opt = Object.assign({ focus: 'mix', types: [] }, LS.get('gopt', { skills: Object.keys(GSKILLS), size: 8 }));
+  const avail = grindTypes(opt).filter(t => opt.skills.includes(GTYPES[t].skill)), allT = !opt.types.length;
   const d = (state.gdays || {})[todayKey()] || { rounds: 0, items: 0, sum: 0 };
   const ranked = Object.keys(GTYPES).map(t => [t, gstat(t)]).sort((a, b) => a[1].acc - b[1].acc);
   const skillAcc = Object.keys(GSKILLS).map(sk => { const ts = ranked.filter(([t]) => GTYPES[t].skill === sk); return [sk, Math.round(100 * ts.reduce((a, [, s]) => a + s.acc, 0) / ts.length)]; });
   return `<div class="eyebrow" style="margin-top:28px">Grind · as many rounds as you want</div><h1>Cram mode</h1>
-    <p class="muted">Short rounds of mixed exercises, built from the exercise types in your homework and lab books. Your current lesson gets the most weight, and the exercise types you score worst on come up most often. Every answer updates the targeting.</p>
+    <p class="muted">Short rounds of mixed exercises, built from the exercise types in your homework and lab books. Your current lesson gets the most weight (or switch Focus to “Only Lesson N” to drill just that lesson), and the exercise types you score worst on come up most often. Every answer updates the targeting.</p>
     <div class="sheet"><div class="plan">
       <div><span class="eyebrow">Today</span><div>${d.rounds} rounds · ${d.items} exercises${d.items ? ` · ${Math.round(100 * d.sum / d.items)}%` : ''}</div></div>
       <div><label class="eyebrow" for="gcur">Current lesson</label><div><select id="gcur">${lessonOptions(cur)}</select></div></div>
-      <div><label class="eyebrow" for="gsize">Round size</label><div><select id="gsize">${[5, 8, 12, 16].map(v => `<option ${v === opt.size ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div></div>
+      <div><label class="eyebrow" for="gsize">Round size</label><div><select id="gsize">${[5, 8, 12, 16, 24, 32].map(v => `<option ${v === opt.size ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div></div>
+      <h3>Focus</h3><div class="chips" id="gfoc"><button class="chip" aria-pressed="${opt.focus !== 'only'}" data-foc="mix">Lessons 1–${cur}, current lesson weighted</button><button class="chip" aria-pressed="${opt.focus === 'only'}" data-foc="only">Only Lesson ${cur}</button></div>
+      ${opt.focus === 'only' ? `<p class="small muted">Every exercise uses Lesson ${cur} material only. ${avail.length} of ${Object.keys(GTYPES).length} exercise types have material for this lesson.</p>` : ''}
       <h3>Skills in the mix</h3><div class="chips" id="gsk">${Object.entries(GSKILLS).map(([k, v]) => `<button class="chip" aria-pressed="${opt.skills.includes(k)}" data-sk="${k}">${esc(v)}</button>`).join('')}</div>
+      <h3>Exercise types <span class="small muted" style="font-weight:400">· pick some to drill just those, or leave on All</span></h3>
+      <div class="chips" id="gty"><button class="chip" aria-pressed="${allT}" data-ty="*">All</button>${avail.map(t => `<button class="chip" aria-pressed="${!allT && opt.types.includes(t)}" data-ty="${t}">${esc(GTYPES[t].name)}</button>`).join('')}</div>
       <div class="actions"><button class="btn" id="ggo">Start grinding</button></div></div>
     <h2>How each skill is going</h2><div class="bars">${skillAcc.map(([sk, a]) => `<div class="bar"><span class="lab">${esc(GSKILLS[sk])}</span><span class="track"><i class="${a >= 80 ? 's3' : a >= 60 ? 's1' : 's0'}" style="width:${a}%"></i></span><span class="num">${a}%</span></div>`).join('')}</div>
     <h2>What it’s targeting now</h2><p class="small muted">Lowest first. Everything starts at 50% and updates after every round you finish.</p>
@@ -5145,8 +5162,12 @@ function viewGrind() {
     <details class="card" style="margin-top:16px"><summary><b>All ${Object.keys(GTYPES).length} exercise types</b></summary><div class="tbl"><table><tr><th>Exercise</th><th>Skill</th><th>From your books</th><th>Now</th></tr>${ranked.map(([t, s]) => `<tr><td>${esc(GTYPES[t].name)}</td><td class="small">${esc(GSKILLS[GTYPES[t].skill])}</td><td class="small muted">${esc(GTYPES[t].src)}</td><td class="num">${Math.round(s.acc * 100)}%${s.n ? '' : '*'}</td></tr>`).join('')}</table></div><p class="small muted">* Starting estimate; not practiced yet.</p></details>`;
 }
 function wireGrind(el) {
-  const opt = LS.get('gopt', { skills: Object.keys(GSKILLS), size: 8 });
-  el.querySelectorAll('#gsk .chip').forEach(c => c.onclick = () => { const on = c.getAttribute('aria-pressed') !== 'true'; c.setAttribute('aria-pressed', on); opt.skills = [...el.querySelectorAll('#gsk [aria-pressed="true"]')].map(x => x.dataset.sk); LS.set('gopt', opt); $('#ggo', el).disabled = !opt.skills.length; });
+  const opt = Object.assign({ focus: 'mix', types: [] }, LS.get('gopt', { skills: Object.keys(GSKILLS), size: 8 }));
+  el.querySelectorAll('#gfoc .chip').forEach(c => c.onclick = () => { opt.focus = c.dataset.foc; opt.types = []; LS.set('gopt', opt); render(); });
+  el.querySelectorAll('#gty .chip').forEach(c => c.onclick = () => { const t = c.dataset.ty;
+    if (t === '*') opt.types = []; else { const set = new Set(opt.types); set.has(t) ? set.delete(t) : set.add(t); opt.types = [...set]; }
+    LS.set('gopt', opt); render(); });
+  el.querySelectorAll('#gsk .chip').forEach(c => c.onclick = () => { const on = c.getAttribute('aria-pressed') !== 'true'; c.setAttribute('aria-pressed', on); opt.skills = [...el.querySelectorAll('#gsk [aria-pressed="true"]')].map(x => x.dataset.sk); LS.set('gopt', opt); if (opt.skills.length) render(); else $('#ggo', el).disabled = true; });
   $('#gsize', el).onchange = e => { opt.size = +e.target.value; LS.set('gopt', opt); };
   $('#gcur', el).onchange = e => setLesson(+e.target.value);
   $('#ggo', el).onclick = () => startSection('grind', opt);
